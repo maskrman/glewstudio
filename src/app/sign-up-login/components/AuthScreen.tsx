@@ -74,7 +74,6 @@ const handleSignup = async (data: SignupForm) => {
     await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
 
     // 2. Generar o tomar el código OTP (por ejemplo 6 dígitos)
-    // Si tu signUp genera un código o usas uno temporal de prueba:
     const code = "123456"; // <-- Reemplaza por la variable que contenga tu código OTP real
     // 3. Enviar correo mediante Edge Function
     try {
@@ -88,34 +87,26 @@ const handleSignup = async (data: SignupForm) => {
           type: 'OTP_VERIFICATION',
           email: data.email,
           name: data.name,
-          otpCode: code, // <--- AHORA SÍ LO ENVÍA
+          otpCode: code,
         }),
       });
       const resData = await response.json();
       console.log('Respuesta de Edge Function:', resData);
     } catch (emailError) {
       console.error('Error al enviar el correo:', emailError);
+      // Non-blocking — Supabase still sends its own confirmation email
     }
-  } catch (error) {
-    console.error('Error en el registro:', error);
+
+    setPendingEmail(data.email);
+    setPendingName(data.name);
+    setShowOtp(true);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Error al crear la cuenta. Intenta de nuevo.';
+    toast.error(message);
   } finally {
     setLoading(false);
   }
 };
-      } catch {
-        // Non-blocking — Supabase still sends its own confirmation email
-      }
-
-      setPendingEmail(data.email);
-      setPendingName(data.name);
-      setShowOtp(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al crear la cuenta. Intenta de nuevo.';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Show OTP screen after signup
   if (showOtp) {
