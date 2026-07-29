@@ -74,8 +74,7 @@ const handleSignup = async (data: SignupForm) => {
     await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
 
     // 2. Generar o tomar el código OTP (por ejemplo 6 dígitos)
-    const code = "123456"; // <-- Reemplaza por la variable que contenga tu código OTP real
-    // 3. Enviar correo mediante Edge Function
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
         method: 'POST',
