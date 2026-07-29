@@ -67,27 +67,41 @@ export default function AuthScreen() {
     }
   };
 
-  const handleSignup = async (data: SignupForm) => {
-    setLoading(true);
-    try {
-      await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
+const handleSignup = async (data: SignupForm) => {
+  setLoading(true);
+  try {
+    // 1. Crear el usuario en Supabase
+    await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
 
-      // Send OTP verification email via Edge Function
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            type: 'OTP_VERIFICATION',
-            email: data.email,
-            name: data.name,
-            // Note: Supabase sends the actual OTP via its own email; this call is for custom branded email
-            // The actual OTP token is managed by Supabase auth
-          }),
-        });
+    // 2. Generar o tomar el código OTP (por ejemplo 6 dígitos)
+    // Si tu signUp genera un código o usas uno temporal de prueba:
+    const code = "123456"; // <-- Reemplaza por la variable que contenga tu código OTP real
+    // 3. Enviar correo mediante Edge Function
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'OTP_VERIFICATION',
+          email: data.email,
+          name: data.name,
+          otpCode: code, // <--- AHORA SÍ LO ENVÍA
+        }),
+      });
+      const resData = await response.json();
+      console.log('Respuesta de Edge Function:', resData);
+    } catch (emailError) {
+      console.error('Error al enviar el correo:', emailError);
+    }
+  } catch (error) {
+    console.error('Error en el registro:', error);
+  } finally {
+    setLoading(false);
+  }
+};
       } catch {
         // Non-blocking — Supabase still sends its own confirmation email
       }
