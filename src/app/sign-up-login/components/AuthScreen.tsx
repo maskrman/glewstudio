@@ -10,6 +10,7 @@ import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import OtpVerifyScreen from './OtpVerifyScreen';
 
 
 type AuthTab = 'login' | 'signup';
@@ -38,6 +39,11 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
+  // OTP verification state
+  const [showOtp, setShowOtp] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingName, setPendingName] = useState('');
+
   const router = useRouter();
   const { signIn, signUp } = useAuth();
 
@@ -53,8 +59,9 @@ export default function AuthScreen() {
       toast.success('¡Bienvenido a Glewstudio!');
       router.push('/dashboard');
       router.refresh();
-    } catch (err: any) {
-      setLoginError(err?.message || 'Credenciales incorrectas. Verifica tu correo y contraseña.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+      setLoginError(message);
     } finally {
       setLoading(false);
     }
@@ -64,15 +71,51 @@ export default function AuthScreen() {
     setLoading(true);
     try {
       await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
-      toast.success('¡Cuenta creada! Bienvenido a Glewstudio.');
-      router.push('/dashboard');
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err?.message || 'Error al crear la cuenta. Intenta de nuevo.');
+
+      // Send OTP verification email via Edge Function
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            type: 'OTP_VERIFICATION',
+            email: data.email,
+            name: data.name,
+            // Note: Supabase sends the actual OTP via its own email; this call is for custom branded email
+            // The actual OTP token is managed by Supabase auth
+          }),
+        });
+      } catch {
+        // Non-blocking — Supabase still sends its own confirmation email
+      }
+
+      setPendingEmail(data.email);
+      setPendingName(data.name);
+      setShowOtp(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al crear la cuenta. Intenta de nuevo.';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show OTP screen after signup
+  if (showOtp) {
+    return (
+      <OtpVerifyScreen
+        email={pendingEmail}
+        name={pendingName}
+        onBack={() => {
+          setShowOtp(false);
+          setTab('signup');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
