@@ -1,0 +1,175 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import Icon from '@/components/ui/AppIcon';
+
+const plans = [
+  {
+    id: 'plan-apertura',
+    name: 'Apertura',
+    subtitle: 'Plan Básico',
+    price: { monthly: 12, annual: 9 },
+    color: 'tier-badge-apertura',
+    borderColor: 'border-blue-500/30',
+    highlightColor: 'bg-blue-500/5',
+    recommended: false,
+    features: [
+      { text: 'Librería básica e intermedia (80+ cursos)', included: true },
+      { text: 'Calidad HD 720p / 1080p', included: true },
+      { text: 'Acceso desde cualquier dispositivo', included: true },
+      { text: 'Comunidad de estudiantes', included: true },
+      { text: 'Cursos avanzados y Masterclasses', included: false },
+      { text: 'Descarga de archivos RAW y PDFs', included: false },
+      { text: 'Talleres en vivo mensuales', included: false },
+      { text: 'Revisión de portafolio', included: false },
+      { text: 'Certificaciones digitales', included: false },
+      { text: 'Acceso offline', included: false },
+    ],
+  },
+  {
+    id: 'plan-obturador',
+    name: 'Obturador',
+    subtitle: 'Plan Pro',
+    price: { monthly: 24, annual: 18 },
+    color: 'tier-badge-obturador',
+    borderColor: 'border-primary/50',
+    highlightColor: 'bg-primary/5',
+    recommended: true,
+    features: [
+      { text: 'Todo lo del Plan Apertura', included: true },
+      { text: 'Cursos avanzados y Masterclasses', included: true },
+      { text: 'Calidad Full HD / 4K', included: true },
+      { text: 'Descarga de archivos RAW de práctica', included: true },
+      { text: 'Esquemas de iluminación en PDF', included: true },
+      { text: 'Presets de Lightroom y LUTs', included: true },
+      { text: 'Talleres en vivo mensuales', included: false },
+      { text: 'Revisión de portafolio', included: false },
+      { text: 'Certificaciones digitales', included: false },
+      { text: 'Acceso offline', included: false },
+    ],
+  },
+  {
+    id: 'plan-diafragma',
+    name: 'Diafragma',
+    subtitle: 'Plan Master VIP',
+    price: { monthly: 49, annual: 36 },
+    color: 'tier-badge-diafragma',
+    borderColor: 'border-purple-500/40',
+    highlightColor: 'bg-purple-500/5',
+    recommended: false,
+    features: [
+      { text: 'Todo lo del Plan Obturador', included: true },
+      { text: 'Talleres en vivo mensuales', included: true },
+      { text: 'Revisión y retroalimentación de portafolio', included: true },
+      { text: 'Certificaciones digitales al completar rutas', included: true },
+      { text: 'Acceso offline en app móvil', included: true },
+      { text: 'Sesiones Q&A con instructores', included: true },
+      { text: 'Acceso anticipado a nuevos cursos', included: true },
+      { text: 'Comunidad VIP exclusiva', included: true },
+      { text: 'Soporte prioritario', included: true },
+      { text: '1 revisión de portafolio mensual', included: true },
+    ],
+  },
+];
+
+export default function LandingPlans() {
+  const [annual, setAnnual] = useState(true);
+
+  return (
+    <section id="planes" className="py-20 bg-secondary/30">
+      <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
+        <div className="text-center mb-12">
+          <p className="text-xs font-700 text-primary tracking-widest uppercase mb-2">Planes</p>
+          <h2 className="text-hero-md font-800 text-foreground mb-4">
+            Elige tu Nivel de Aprendizaje
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto mb-8">
+            Desde fundamentos hasta masterclasses avanzadas con instructores activos en la industria.
+          </p>
+
+          {/* Billing toggle */}
+          <div className="inline-flex items-center gap-3 bg-muted rounded-full p-1">
+            <button
+              onClick={() => setAnnual(false)}
+              className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all ${
+                !annual ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
+              }`}
+            >
+              Mensual
+            </button>
+            <button
+              onClick={() => setAnnual(true)}
+              className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all flex items-center gap-2 ${
+                annual ? 'bg-card text-foreground shadow' : 'text-muted-foreground'
+              }`}
+            >
+              Anual
+              <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
+                -25%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
+          {plans?.map((plan) => (
+            <div
+              key={plan?.id}
+              className={`relative rounded-2xl border ${plan?.borderColor} ${plan?.highlightColor} p-6 flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10`}
+            >
+              {plan?.recommended && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-700 px-4 py-1 rounded-full">
+                  Más Popular
+                </div>
+              )}
+
+              <div className="mb-6">
+                <span className={`inline-flex text-xs font-700 px-2 py-0.5 rounded-full mb-3 ${plan?.color}`}>
+                  {plan?.subtitle}
+                </span>
+                <h3 className="text-2xl font-800 text-foreground mb-1">{plan?.name}</h3>
+                <div className="flex items-end gap-1">
+                  <span className="text-4xl font-800 gradient-gold-text">
+                    ${annual ? plan?.price?.annual : plan?.price?.monthly}
+                  </span>
+                  <span className="text-muted-foreground text-sm mb-1">/mes</span>
+                </div>
+                {annual && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Facturado anualmente · Ahorra ${(plan?.price?.monthly - plan?.price?.annual) * 12}/año
+                  </p>
+                )}
+              </div>
+
+              <ul className="flex flex-col gap-3 mb-8 flex-1">
+                {plan?.features?.map((feature, fi) => (
+                  <li key={`${plan?.id}-feature-${fi}`} className="flex items-start gap-2.5">
+                    {feature?.included ? (
+                      <Icon name="CheckCircleIcon" size={16} className="text-primary shrink-0 mt-0.5" variant="solid" />
+                    ) : (
+                      <Icon name="XCircleIcon" size={16} className="text-muted-foreground/40 shrink-0 mt-0.5" variant="solid" />
+                    )}
+                    <span className={`text-sm ${feature?.included ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                      {feature?.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/sign-up-login"
+                className={`w-full py-3 text-sm font-700 text-center rounded-xl transition-all ${
+                  plan?.recommended
+                    ? 'btn-primary' :'btn-ghost'
+                }`}
+              >
+                {plan?.recommended ? 'Comenzar con Obturador' : `Elegir ${plan?.name}`}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
