@@ -45,9 +45,9 @@ export async function POST(req: NextRequest) {
 
       otpCode = linkData?.properties?.email_otp ?? null;
     } else {
-      // For signup: use generateLink with type 'signup'
+      // For signup: use generateLink with type 'magiclink' — works for both new and existing users
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'signup',
+        type: 'magiclink',
         email,
       });
 
