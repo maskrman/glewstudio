@@ -11,9 +11,18 @@ interface OtpVerifyScreenProps {
   email: string;
   name: string;
   onBack: () => void;
+  /** 'signup' for new account verification, 'recovery' for password reset */
+  mode?: 'signup' | 'recovery';
+  onRecoverySuccess?: (code: string) => void;
 }
 
-export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreenProps) {
+export default function OtpVerifyScreen({
+  email,
+  name,
+  onBack,
+  mode = 'signup',
+  onRecoverySuccess,
+}: OtpVerifyScreenProps) {
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -69,13 +78,14 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
   };
 
   const handleVerify = async (code: string) => {
+    if (code.length < 6) return;
     setLoading(true);
     setError('');
     try {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: code,
-        type: 'signup',
+        type: mode,
       });
 
       if (verifyError) {
@@ -85,18 +95,24 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
         return;
       }
 
-      // Send welcome email via Edge Function
+      if (mode === 'recovery') {
+        // Pass the verified code back so parent can show the new-password form
+        onRecoverySuccess?.(code);
+        return;
+      }
+
+      // signup mode — send welcome email (non-blocking)
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ type: 'WELCOME', email, name }),
         });
       } catch {
-        // Welcome email failure is non-blocking
+        // non-blocking
       }
 
       toast.success('¡Cuenta verificada! Bienvenido a GlewStudio.');
@@ -113,11 +129,18 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
   const handleResend = async () => {
     setResending(true);
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-      if (resendError) throw resendError;
+      if (mode === 'recovery') {
+        const { error: resendError } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: undefined,
+        });
+        if (resendError) throw resendError;
+      } else {
+        const { error: resendError } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+        });
+        if (resendError) throw resendError;
+      }
       setCountdown(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
@@ -148,9 +171,12 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
             <Icon name="EnvelopeIcon" size={26} className="text-primary" />
           </div>
 
-          <h2 className="text-2xl font-800 text-foreground text-center mb-2">Verifica tu correo</h2>
+          <h2 className="text-2xl font-800 text-foreground text-center mb-2">
+            {mode === 'recovery' ? 'Recupera tu contraseña' : 'Verifica tu correo'}
+          </h2>
           <p className="text-sm text-muted-foreground text-center mb-6 leading-relaxed">
-            Enviamos un código de 6 dígitos a<br />
+            {mode === 'recovery' ?'Enviamos un código de recuperación a' :'Enviamos un código de 6 dígitos a'}
+            <br />
             <span className="text-foreground font-600">{maskedEmail}</span>
           </p>
 
@@ -178,6 +204,7 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
                 className={`w-12 h-14 text-center text-xl font-800 rounded-xl border transition-all outline-none
                   bg-muted text-foreground
                   ${digit ? 'border-primary/60 bg-primary/5' : 'border-border'}
+                  ${error ? 'border-red-500/60' : ''}
                   ${loading ? 'opacity-50 cursor-not-allowed' : 'focus:border-primary focus:bg-primary/5'}
                 `}
                 aria-label={`Dígito ${i + 1} del código OTP`}
@@ -224,7 +251,7 @@ export default function OtpVerifyScreen({ email, name, onBack }: OtpVerifyScreen
             className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Icon name="ArrowLeftIcon" size={14} />
-            Volver al registro
+            {mode === 'recovery' ? 'Volver al inicio de sesión' : 'Volver al registro'}
           </button>
         </div>
       </div>

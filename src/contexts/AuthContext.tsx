@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || ''
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        // No emailRedirectTo — Supabase will send a 6-digit OTP code instead of a magic link
       }
     });
     if (error) throw error;
