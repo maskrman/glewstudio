@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client';
 interface OtpVerifyScreenProps {
   email: string;
   name: string;
+  plan?: string;
   onBack: () => void;
   /** 'signup' for new account verification, 'recovery' for password reset */
   mode?: 'signup' | 'recovery';
@@ -19,6 +20,7 @@ interface OtpVerifyScreenProps {
 export default function OtpVerifyScreen({
   email,
   name,
+  plan = 'obturador',
   onBack,
   mode = 'signup',
   onRecoverySuccess,
@@ -101,7 +103,22 @@ export default function OtpVerifyScreen({
         return;
       }
 
-      // signup mode — send welcome email (non-blocking)
+      // signup mode — insert subscription now that OTP is verified
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          const { error: subError } = await supabase
+            .from('subscriptions')
+            .insert({ user_id: user.id, tier: plan, status: 'active' });
+          if (subError) {
+            console.error('Subscription insert error:', subError.message);
+          }
+        }
+      } catch {
+        // non-blocking — subscription can be retried later
+      }
+
+      // send welcome email (non-blocking)
       try {
         await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email`, {
           method: 'POST',

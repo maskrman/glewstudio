@@ -56,6 +56,7 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingName, setPendingName] = useState('');
+  const [pendingPlan, setPendingPlan] = useState('obturador');
 
   const router = useRouter();
   const { signIn, signUp } = useAuth();
@@ -90,6 +91,7 @@ export default function AuthScreen() {
       await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
       setPendingEmail(data.email);
       setPendingName(data.name);
+      setPendingPlan(data.plan);
       setView('otp-signup');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear la cuenta. Intenta de nuevo.';
@@ -146,6 +148,7 @@ export default function AuthScreen() {
       <OtpVerifyScreen
         email={pendingEmail}
         name={pendingName}
+        plan={pendingPlan}
         mode="signup"
         onBack={() => {
           setView('form');

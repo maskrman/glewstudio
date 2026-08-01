@@ -55,17 +55,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     if (error) throw error;
 
-    // Insert subscription row with the selected plan tier
-    const userId = data.user?.id;
-    const tier = metadata?.plan || 'apertura';
-    if (userId) {
-      const { error: subError } = await supabase
-        .from('subscriptions')
-        .insert({ user_id: userId, tier, status: 'active' });
-      if (subError) {
-        console.error('Subscription insert error:', subError.message);
-      }
-    }
+    // Subscription insert is intentionally deferred to after OTP verification
+    // to avoid creating DB records for unverified users.
 
     return data;
   };
