@@ -23,30 +23,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
     }
 
-    // Use admin client to generate OTP link (extracts the token)
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Generate a 6-digit OTP code and store it via Supabase's generateLink
-    const linkType = type === 'recovery' ? 'recovery' : 'signup';
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: linkType,
-      email,
-    });
+    let otpCode: string | null = null;
 
-    if (linkError) {
-      console.error('generateLink error:', linkError.message);
-      return NextResponse.json({ error: linkError.message }, { status: 400 });
+    if (type === 'recovery') {
+      // For password recovery: use generateLink with type 'recovery'
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+      });
+
+      if (linkError) {
+        console.error('generateLink recovery error:', linkError.message);
+        return NextResponse.json({ error: linkError.message }, { status: 400 });
+      }
+
+      otpCode = linkData?.properties?.email_otp ?? null;
+    } else {
+      // For signup: use generateLink with type 'signup'
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'signup',
+        email,
+      });
+
+      if (linkError) {
+        console.error('generateLink signup error:', linkError.message);
+        return NextResponse.json({ error: linkError.message }, { status: 400 });
+      }
+
+      otpCode = linkData?.properties?.email_otp ?? null;
     }
 
-    // Extract the OTP token from the generated link properties
-    const otpCode = linkData?.properties?.email_otp;
-
-    if (!otpCode) {
-      return NextResponse.json({ error: 'Could not generate OTP code' }, { status: 500 });
+    // Ensure we have a 6-digit code
+    if (!otpCode || otpCode.length !== 6) {
+      console.error('OTP code invalid or not 6 digits:', otpCode);
+      return NextResponse.json({ error: 'No se pudo generar el código OTP de 6 dígitos' }, { status: 500 });
     }
 
     // Send the OTP email via Resend
@@ -118,7 +134,7 @@ function getOtpTemplate(name: string, code: string): string {
             <td style="padding:36px 40px;text-align:center;">
               <h2 style="margin:0 0 12px;color:#f9fafb;font-size:20px;font-weight:800;">Verifica tu cuenta</h2>
               <p style="margin:0 0 28px;color:#9ca3af;font-size:14px;line-height:1.6;">
-                Hola ${name},<br/>
+                Hola ${name || 'usuario'},<br/>
                 Usa el siguiente código de 6 dígitos para completar tu registro en GlewStudio:
               </p>
               <div style="background:#1a1a1a;border:2px solid #c9a22740;border-radius:12px;padding:24px 32px;display:inline-block;margin-bottom:28px;">

@@ -56,18 +56,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
 
     // Send OTP email via our server-side route (uses Resend)
-    try {
-      await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          name: metadata?.fullName || '',
-          type: 'signup',
-        }),
-      });
-    } catch {
-      // non-blocking — Supabase's built-in email is still a fallback
+    const otpRes = await fetch('/api/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        name: metadata?.fullName || '',
+        type: 'signup',
+      }),
+    });
+
+    if (!otpRes.ok) {
+      const otpResult = await otpRes.json().catch(() => ({}));
+      console.error('OTP send error:', otpResult?.error);
+      // Non-blocking: Supabase's built-in email is a fallback, don't throw
     }
 
     // Subscription insert is intentionally deferred to after OTP verification
