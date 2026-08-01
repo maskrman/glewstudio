@@ -1,12 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
 
 export default function LandingHero() {
   const [videoError, setVideoError] = useState(false);
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/user-count')
+      .then((res) => res.json())
+      .then((data) => setStudentCount(100 + (data.count ?? 0)))
+      .catch(() => setStudentCount(100));
+  }, []);
+
+  const formatCount = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K+`;
+    return `${n}+`;
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -52,7 +65,7 @@ export default function LandingHero() {
           <div className="flex items-center gap-6 mb-10">
             {[
             { value: '120+', label: 'Cursos' },
-            { value: '18K+', label: 'Estudiantes' },
+            { value: studentCount !== null ? formatCount(studentCount) : '100+', label: 'Estudiantes' },
             { value: '4.9', label: 'Valoración' }]?.
             map((stat) =>
             <div key={`hero-stat-${stat?.label}`} className="text-center">
