@@ -50,10 +50,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || ''
         },
-        // No emailRedirectTo — Supabase will send a 6-digit OTP code instead of a magic link
+        // No emailRedirectTo — we send the OTP ourselves via /api/send-otp
       }
     });
     if (error) throw error;
+
+    // Send OTP email via our server-side route (uses Resend)
+    try {
+      await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          name: metadata?.fullName || '',
+          type: 'signup',
+        }),
+      });
+    } catch {
+      // non-blocking — Supabase's built-in email is still a fallback
+    }
 
     // Subscription insert is intentionally deferred to after OTP verification
     // to avoid creating DB records for unverified users.

@@ -106,8 +106,14 @@ export default function AuthScreen() {
     setLoading(true);
     setForgotError('');
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email);
-      if (error) throw error;
+      // Use our server-side route to generate and send the recovery OTP via Resend
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, type: 'recovery' }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.error || 'No se pudo enviar el código.');
       setPendingEmail(data.email);
       setView('otp-recovery');
       toast.success('Código enviado a tu correo.');

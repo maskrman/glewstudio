@@ -146,18 +146,13 @@ export default function OtpVerifyScreen({
   const handleResend = async () => {
     setResending(true);
     try {
-      if (mode === 'recovery') {
-        const { error: resendError } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: undefined,
-        });
-        if (resendError) throw resendError;
-      } else {
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email,
-        });
-        if (resendError) throw resendError;
-      }
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, type: mode === 'recovery' ? 'recovery' : 'signup' }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.error || 'Error al reenviar el código.');
       setCountdown(60);
       setCanResend(false);
       setOtp(['', '', '', '', '', '']);
