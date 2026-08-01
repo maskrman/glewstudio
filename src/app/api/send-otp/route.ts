@@ -45,22 +45,33 @@ export async function POST(req: NextRequest) {
 
       otpCode = linkData?.properties?.email_otp ?? null;
     } else {
-      // For signup: use generateLink with type 'magiclink' — works for both new and existing users
+      // For signup: use generateLink with type 'signup' — generates a proper 6-digit email_otp
+      // The user was just created via supabase.auth.signUp(), so they exist as unconfirmed
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
+        type: 'signup',
         email,
+        password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
       });
 
       if (linkError) {
-        console.error('generateLink signup error:', linkError.message);
-        return NextResponse.json({ error: linkError.message }, { status: 400 });
+        // If user already confirmed, fall back to magiclink which also produces email_otp
+        console.warn('generateLink signup error, trying magiclink fallback:', linkError.message);
+        const { data: mlData, error: mlError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+        });
+        if (mlError) {
+          console.error('generateLink magiclink fallback error:', mlError.message);
+          return NextResponse.json({ error: mlError.message }, { status: 400 });
+        }
+        otpCode = mlData?.properties?.email_otp ?? null;
+      } else {
+        otpCode = linkData?.properties?.email_otp ?? null;
       }
-
-      otpCode = linkData?.properties?.email_otp ?? null;
     }
 
-    // Ensure we have a 6-digit code
-    if (!otpCode || otpCode.length !== 6) {
+    // Ensure we have a 6-digit numeric code
+    if (!otpCode || !/^\d{6}$/.test(otpCode)) {
       console.error('OTP code invalid or not 6 digits:', otpCode);
       return NextResponse.json({ error: 'No se pudo generar el código OTP de 6 dígitos' }, { status: 500 });
     }
