@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -57,10 +57,22 @@ export default function AuthScreen() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingName, setPendingName] = useState('');
   const [pendingPlan, setPendingPlan] = useState('obturador');
+  const [studentCount, setStudentCount] = useState<string>('100+');
 
   const router = useRouter();
   const { signIn, signUp } = useAuth();
   const supabase = createClient();
+
+  useEffect(() => {
+    fetch('/api/user-count')
+      .then((res) => res.json())
+      .then((data) => {
+        const total = 100 + (data.count ?? 0);
+        const formatted = total >= 1000 ? `${(total / 1000).toFixed(1)}K+` : `${total}+`;
+        setStudentCount(formatted);
+      })
+      .catch(() => setStudentCount('100+'));
+  }, []);
 
   const loginForm = useForm<LoginForm>({ defaultValues: { email: '', password: '', remember: false } });
   const signupForm = useForm<SignupForm>({ defaultValues: { name: '', email: '', password: '', plan: 'obturador' } });
@@ -387,7 +399,7 @@ export default function AuthScreen() {
             <div className="flex items-center gap-6 mt-8">
               {[
                 { icon: 'FilmIcon', label: '120+ Cursos' },
-                { icon: 'UsersIcon', label: '18K Estudiantes' },
+                { icon: 'UsersIcon', label: `${studentCount} Estudiantes` },
                 { icon: 'StarIcon', label: '4.9 Rating' },
               ].map((stat) => (
                 <div key={`auth-stat-${stat.label}`} className="flex items-center gap-2 text-sm text-muted-foreground">
