@@ -43,7 +43,7 @@ export default function LandingHero() {
         <div className="max-w-2xl">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-3 py-1.5 mb-6">
-            <span className="w-2 h-2 bg-primary rounded-full live-dot" />
+            <span className="w-2 h-2 bg-primary rounded-full" />
             <span className="text-xs font-700 text-primary tracking-wider uppercase">
               Nueva Temporada — Iluminación Cinematográfica
             </span>

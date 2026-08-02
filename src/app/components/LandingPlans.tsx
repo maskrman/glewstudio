@@ -6,10 +6,10 @@ import Icon from '@/components/ui/AppIcon';
 
 const plans = [
   {
-    id: 'plan-apertura',
-    name: 'Apertura',
+    id: 'plan-basico',
+    name: 'Básico',
     subtitle: 'Plan Básico',
-    price: { monthly: 12, annual: 9 },
+    monthlyPrice: 10,
     color: 'tier-badge-apertura',
     borderColor: 'border-blue-500/30',
     highlightColor: 'bg-blue-500/5',
@@ -21,46 +21,43 @@ const plans = [
       { text: 'Comunidad de estudiantes', included: true },
       { text: 'Cursos avanzados y Masterclasses', included: false },
       { text: 'Descarga de archivos RAW y PDFs', included: false },
-      { text: 'Talleres en vivo mensuales', included: false },
       { text: 'Revisión de portafolio', included: false },
       { text: 'Certificaciones digitales', included: false },
       { text: 'Acceso offline', included: false },
     ],
   },
   {
-    id: 'plan-obturador',
-    name: 'Obturador',
+    id: 'plan-estandar',
+    name: 'Estándar',
     subtitle: 'Plan Pro',
-    price: { monthly: 24, annual: 18 },
+    monthlyPrice: 25,
     color: 'tier-badge-obturador',
     borderColor: 'border-primary/50',
     highlightColor: 'bg-primary/5',
     recommended: true,
     features: [
-      { text: 'Todo lo del Plan Apertura', included: true },
+      { text: 'Todo lo del Plan Básico', included: true },
       { text: 'Cursos avanzados y Masterclasses', included: true },
       { text: 'Calidad Full HD / 4K', included: true },
       { text: 'Descarga de archivos RAW de práctica', included: true },
       { text: 'Esquemas de iluminación en PDF', included: true },
       { text: 'Presets de Lightroom y LUTs', included: true },
-      { text: 'Talleres en vivo mensuales', included: false },
       { text: 'Revisión de portafolio', included: false },
       { text: 'Certificaciones digitales', included: false },
       { text: 'Acceso offline', included: false },
     ],
   },
   {
-    id: 'plan-diafragma',
-    name: 'Diafragma',
+    id: 'plan-premium',
+    name: 'Premium',
     subtitle: 'Plan Master VIP',
-    price: { monthly: 49, annual: 36 },
+    monthlyPrice: 50,
     color: 'tier-badge-diafragma',
     borderColor: 'border-purple-500/40',
     highlightColor: 'bg-purple-500/5',
     recommended: false,
     features: [
-      { text: 'Todo lo del Plan Obturador', included: true },
-      { text: 'Talleres en vivo mensuales', included: true },
+      { text: 'Todo lo del Plan Estándar', included: true },
       { text: 'Revisión y retroalimentación de portafolio', included: true },
       { text: 'Certificaciones digitales al completar rutas', included: true },
       { text: 'Acceso offline en app móvil', included: true },
@@ -73,8 +70,18 @@ const plans = [
   },
 ];
 
+const ANNUAL_DISCOUNT = 0.30;
+
+function getAnnualMonthly(monthly: number) {
+  return parseFloat((monthly * (1 - ANNUAL_DISCOUNT)).toFixed(2));
+}
+
+function getAnnualTotal(monthly: number) {
+  return Math.round(getAnnualMonthly(monthly) * 12);
+}
+
 export default function LandingPlans() {
-  const [annual, setAnnual] = useState(true);
+  const [annual, setAnnual] = useState(false);
 
   return (
     <section id="planes" className="py-20 bg-secondary/30">
@@ -106,68 +113,78 @@ export default function LandingPlans() {
             >
               Anual
               <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
-                -25%
+                -30%
               </span>
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
-          {plans?.map((plan) => (
-            <div
-              key={plan?.id}
-              className={`relative rounded-2xl border ${plan?.borderColor} ${plan?.highlightColor} p-6 flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10`}
-            >
-              {plan?.recommended && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-700 px-4 py-1 rounded-full">
-                  Más Popular
-                </div>
-              )}
+          {plans?.map((plan) => {
+            const displayPrice = annual
+              ? getAnnualMonthly(plan.monthlyPrice)
+              : plan.monthlyPrice;
+            const annualTotal = getAnnualTotal(plan.monthlyPrice);
 
-              <div className="mb-6">
-                <span className={`inline-flex text-xs font-700 px-2 py-0.5 rounded-full mb-3 ${plan?.color}`}>
-                  {plan?.subtitle}
-                </span>
-                <h3 className="text-2xl font-800 text-foreground mb-1">{plan?.name}</h3>
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-800 gradient-gold-text">
-                    ${annual ? plan?.price?.annual : plan?.price?.monthly}
-                  </span>
-                  <span className="text-muted-foreground text-sm mb-1">/mes</span>
-                </div>
-                {annual && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Facturado anualmente · Ahorra ${(plan?.price?.monthly - plan?.price?.annual) * 12}/año
-                  </p>
-                )}
-              </div>
-
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {plan?.features?.map((feature, fi) => (
-                  <li key={`${plan?.id}-feature-${fi}`} className="flex items-start gap-2.5">
-                    {feature?.included ? (
-                      <Icon name="CheckCircleIcon" size={16} className="text-primary shrink-0 mt-0.5" variant="solid" />
-                    ) : (
-                      <Icon name="XCircleIcon" size={16} className="text-muted-foreground/40 shrink-0 mt-0.5" variant="solid" />
-                    )}
-                    <span className={`text-sm ${feature?.included ? 'text-foreground' : 'text-muted-foreground/50'}`}>
-                      {feature?.text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/sign-up-login"
-                className={`w-full py-3 text-sm font-700 text-center rounded-xl transition-all ${
-                  plan?.recommended
-                    ? 'btn-primary' :'btn-ghost'
-                }`}
+            return (
+              <div
+                key={plan?.id}
+                className={`relative rounded-2xl border ${plan?.borderColor} ${plan?.highlightColor} p-6 flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10`}
               >
-                {plan?.recommended ? 'Comenzar con Obturador' : `Elegir ${plan?.name}`}
-              </Link>
-            </div>
-          ))}
+                {plan?.recommended && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-700 px-4 py-1 rounded-full">
+                    Más Popular
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <span className={`inline-flex text-xs font-700 px-2 py-0.5 rounded-full mb-3 ${plan?.color}`}>
+                    {plan?.subtitle}
+                  </span>
+                  <h3 className="text-2xl font-800 text-foreground mb-1">{plan?.name}</h3>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-800 gradient-gold-text">
+                      ${displayPrice % 1 === 0 ? displayPrice : displayPrice.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground text-sm mb-1">/mes</span>
+                  </div>
+                  {annual ? (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Cobrado como ${annualTotal} / año · Ahorra {Math.round(ANNUAL_DISCOUNT * 100)}%
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Facturado mensualmente
+                    </p>
+                  )}
+                </div>
+
+                <ul className="flex flex-col gap-3 mb-8 flex-1">
+                  {plan?.features?.map((feature, fi) => (
+                    <li key={`${plan?.id}-feature-${fi}`} className="flex items-start gap-2.5">
+                      {feature?.included ? (
+                        <Icon name="CheckCircleIcon" size={16} className="text-primary shrink-0 mt-0.5" variant="solid" />
+                      ) : (
+                        <Icon name="XCircleIcon" size={16} className="text-muted-foreground/40 shrink-0 mt-0.5" variant="solid" />
+                      )}
+                      <span className={`text-sm ${feature?.included ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                        {feature?.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/sign-up-login"
+                  className={`w-full py-3 text-sm font-700 text-center rounded-xl transition-all ${
+                    plan?.recommended ? 'btn-primary' : 'btn-ghost'
+                  }`}
+                >
+                  {plan?.recommended ? 'Comenzar con Estándar' : `Elegir ${plan?.name}`}
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
