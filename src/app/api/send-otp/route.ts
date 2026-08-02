@@ -29,51 +29,31 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    let otpCode: string | null = null;
+    // Generate a secure random 6-digit OTP
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
 
-    if (type === 'recovery') {
-      // For password recovery: use generateLink with type 'recovery'
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
+    // Delete any existing unused OTPs for this email+type to avoid confusion
+    await supabaseAdmin
+      .from('otp_codes')
+      .delete()
+      .eq('email', email)
+      .eq('type', type)
+      .eq('used', false);
+
+    // Store the new OTP in the database
+    const { error: insertError } = await supabaseAdmin
+      .from('otp_codes')
+      .insert({
         email,
+        code: otpCode,
+        type,
+        expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        used: false,
       });
 
-      if (linkError) {
-        console.error('generateLink recovery error:', linkError.message);
-        return NextResponse.json({ error: linkError.message }, { status: 400 });
-      }
-
-      otpCode = linkData?.properties?.email_otp ?? null;
-    } else {
-      // For signup: use generateLink with type 'signup' — generates a proper 6-digit email_otp
-      // The user was just created via supabase.auth.signUp(), so they exist as unconfirmed
-      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'signup',
-        email,
-        password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
-      });
-
-      if (linkError) {
-        // If user already confirmed, fall back to magiclink which also produces email_otp
-        console.warn('generateLink signup error, trying magiclink fallback:', linkError.message);
-        const { data: mlData, error: mlError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-        });
-        if (mlError) {
-          console.error('generateLink magiclink fallback error:', mlError.message);
-          return NextResponse.json({ error: mlError.message }, { status: 400 });
-        }
-        otpCode = mlData?.properties?.email_otp ?? null;
-      } else {
-        otpCode = linkData?.properties?.email_otp ?? null;
-      }
-    }
-
-    // Ensure we have a 6-digit numeric code
-    if (!otpCode || !/^\d{6}$/.test(otpCode)) {
-      console.error('OTP code invalid or not 6 digits:', otpCode);
-      return NextResponse.json({ error: 'No se pudo generar el código OTP de 6 dígitos' }, { status: 500 });
+    if (insertError) {
+      console.error('OTP insert error:', insertError.message);
+      return NextResponse.json({ error: 'No se pudo generar el código OTP' }, { status: 500 });
     }
 
     // Send the OTP email via Resend

@@ -84,14 +84,16 @@ export default function OtpVerifyScreen({
     setLoading(true);
     setError('');
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: code,
-        type: mode,
+      // Verify against our custom otp_codes table
+      const res = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, type: mode === 'recovery' ? 'recovery' : 'signup' }),
       });
+      const result = await res.json();
 
-      if (verifyError) {
-        setError('Código incorrecto o expirado. Verifica e intenta de nuevo.');
+      if (!res.ok || !result.verified) {
+        setError(result?.error || 'Código incorrecto o expirado. Verifica e intenta de nuevo.');
         setOtp(['', '', '', '', '', '']);
         inputRefs.current[0]?.focus();
         return;
