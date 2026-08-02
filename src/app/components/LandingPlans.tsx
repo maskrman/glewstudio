@@ -29,7 +29,7 @@ const plans = [
   {
     id: 'plan-estandar',
     name: 'Estándar',
-    subtitle: 'Plan Pro',
+    subtitle: 'Plan Estándar',
     monthlyPrice: 25,
     color: 'tier-badge-obturador',
     borderColor: 'border-primary/50',
@@ -48,9 +48,9 @@ const plans = [
     ],
   },
   {
-    id: 'plan-premium',
-    name: 'Premium',
-    subtitle: 'Plan Master VIP',
+    id: 'plan-vip',
+    name: 'VIP',
+    subtitle: 'Plan VIP',
     monthlyPrice: 50,
     color: 'tier-badge-diafragma',
     borderColor: 'border-purple-500/40',

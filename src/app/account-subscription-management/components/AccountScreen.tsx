@@ -23,12 +23,12 @@ interface ProfileForm {
 }
 
 const invoices = [
-{ id: 'inv-001', date: '01 jul 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-002', date: '01 jun 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-003', date: '01 may 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-004', date: '01 abr 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-005', date: '01 mar 2026', amount: '$12.00', status: 'Pagado', plan: 'Apertura', method: 'Visa ••••4821' },
-{ id: 'inv-006', date: '01 feb 2026', amount: '$12.00', status: 'Pagado', plan: 'Apertura', method: 'Visa ••••4821' }];
+{ id: 'inv-001', date: '01 jul 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
+{ id: 'inv-002', date: '01 jun 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
+{ id: 'inv-003', date: '01 may 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
+{ id: 'inv-004', date: '01 abr 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
+{ id: 'inv-005', date: '01 mar 2026', amount: '$10.00', status: 'Pagado', plan: 'Básico', method: 'Visa ••••4821' },
+{ id: 'inv-006', date: '01 feb 2026', amount: '$10.00', status: 'Pagado', plan: 'Básico', method: 'Visa ••••4821' }];
 
 
 const downloads = [
@@ -363,7 +363,7 @@ export default function AccountScreen() {
                     <div className="flex flex-col gap-3">
                       {[
                     { field: 'notifyNewCourses' as const, label: 'Nuevos cursos y contenido', desc: 'Recibe un aviso cuando se publiquen nuevos cursos' },
-                    { field: 'notifyLive' as const, label: 'Talleres en vivo', desc: 'Recordatorios antes de los talleres del Plan Diafragma' },
+                    { field: 'notifyLive' as const, label: 'Talleres en vivo', desc: 'Recordatorios antes de los talleres del Plan VIP' },
                     { field: 'notifyProgress' as const, label: 'Resumen de progreso semanal', desc: 'Un correo cada lunes con tu avance de la semana' }].
                     map((notif) =>
                     <label key={`notif-${notif.field}`} className="flex items-start gap-3 cursor-pointer">
@@ -454,9 +454,9 @@ export default function AccountScreen() {
                       <Icon name="SparklesIcon" size={22} className="text-purple-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-base font-700 text-foreground mb-1">Actualiza al Plan Diafragma</h3>
+                      <h3 className="text-base font-700 text-foreground mb-1">Actualiza al Plan VIP</h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Desbloquea talleres en vivo mensuales, revisión de portafolio, certificaciones y acceso offline por solo $18 más al mes.
+                        Desbloquea revisión de portafolio, certificaciones, acceso offline y comunidad VIP exclusiva por solo $25 más al mes.
                       </p>
                       <div className="flex flex-wrap gap-2 mb-4">
                         {['Talleres en Vivo', 'Revisión de Portafolio', 'Certificaciones', 'Acceso Offline', 'Sesiones Q&A'].map((feat) =>
@@ -470,7 +470,7 @@ export default function AccountScreen() {
                       className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm font-700">
                       
                         <Icon name="ArrowUpCircleIcon" size={16} />
-                        Actualizar a Diafragma — $36/mes
+                        Actualizar a VIP — $50/mes
                       </Link>
                     </div>
                   </div>
@@ -485,7 +485,7 @@ export default function AccountScreen() {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                   <div>
                     <h2 className="text-lg font-700 text-foreground">Historial de Pagos</h2>
-                    <p className="text-sm text-muted-foreground">Visa terminada en 4821 · Próximo cargo: $18.00 el 1 ago 2026</p>
+                    <p className="text-sm text-muted-foreground">Visa terminada en 4821 · Próximo cargo: $25.00 el 1 ago 2026</p>
                   </div>
                   <button className="btn-ghost px-4 py-2 text-sm font-600 flex items-center gap-2">
                     <Icon name="PencilIcon" size={14} />
@@ -536,7 +536,7 @@ export default function AccountScreen() {
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <h2 className="text-lg font-700 text-foreground mb-0.5">Archivos Descargados</h2>
-                  <p className="text-sm text-muted-foreground">{downloads.length} archivos · Descargas ilimitadas con Plan Obturador</p>
+                  <p className="text-sm text-muted-foreground">{downloads.length} archivos · Descargas ilimitadas con Plan Estándar</p>
                 </div>
                 <div className="divide-y divide-border">
                   {downloads.map((dl) =>
@@ -646,7 +646,7 @@ export default function AccountScreen() {
                       <Icon name="LockClosedIcon" size={20} className="text-muted-foreground shrink-0" />
                       <div className="flex-1">
                         <p className="text-sm font-600 text-foreground mb-0.5">Certificaciones de Rutas Completas</p>
-                        <p className="text-xs text-muted-foreground">Las certificaciones de rutas de aprendizaje completas requieren el Plan Diafragma.</p>
+                        <p className="text-xs text-muted-foreground">Las certificaciones de rutas de aprendizaje completas requieren el Plan VIP.</p>
                       </div>
                       <Link href="/sign-up-login" className="btn-ghost px-3 py-1.5 text-xs font-600 shrink-0">
                         Actualizar

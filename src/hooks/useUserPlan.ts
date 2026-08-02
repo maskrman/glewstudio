@@ -32,15 +32,15 @@ export function hasAccess(userTier: SubscriptionTier | null, requiredTier: Subsc
 }
 
 export const TIER_LABELS: Record<string, string> = {
-  apertura: 'Plan Apertura',
-  obturador: 'Plan Obturador',
-  diafragma: 'Plan Diafragma',
+  apertura: 'Plan Básico',
+  obturador: 'Plan Estándar',
+  diafragma: 'Plan VIP',
 };
 
 export const TIER_PRICES: Record<string, string> = {
-  apertura: '$9/mes',
-  obturador: '$18/mes',
-  diafragma: '$36/mes',
+  apertura: '$10/mes',
+  obturador: '$25/mes',
+  diafragma: '$50/mes',
 };
 
 /**

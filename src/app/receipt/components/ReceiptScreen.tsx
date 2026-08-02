@@ -18,28 +18,28 @@ interface PlanDetail {
 
 const planDetails: Record<string, PlanDetail> = {
   apertura: {
-    name: 'Apertura',
+    name: 'Básico',
     subtitle: 'Plan Básico',
-    price: 9,
+    price: 10,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-apertura',
     features: ['Librería básica e intermedia (80+ cursos)', 'Calidad HD 720p / 1080p', 'Acceso desde cualquier dispositivo', 'Comunidad de estudiantes'],
   },
   obturador: {
-    name: 'Obturador',
-    subtitle: 'Plan Pro',
-    price: 18,
+    name: 'Estándar',
+    subtitle: 'Plan Estándar',
+    price: 25,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-obturador',
-    features: ['Todo lo del Plan Apertura', 'Cursos avanzados y Masterclasses', 'Calidad Full HD / 4K', 'Descarga de archivos RAW de práctica', 'Presets de Lightroom y LUTs'],
+    features: ['Todo lo del Plan Básico', 'Cursos avanzados y Masterclasses', 'Calidad Full HD / 4K', 'Descarga de archivos RAW de práctica', 'Presets de Lightroom y LUTs'],
   },
   diafragma: {
-    name: 'Diafragma',
-    subtitle: 'Plan Master VIP',
-    price: 36,
+    name: 'VIP',
+    subtitle: 'Plan VIP',
+    price: 50,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-diafragma',
-    features: ['Todo lo del Plan Obturador', 'Talleres en vivo mensuales', 'Revisión y retroalimentación de portafolio', 'Certificaciones digitales', 'Sesiones Q&A con instructores'],
+    features: ['Todo lo del Plan Estándar', 'Revisión y retroalimentación de portafolio', 'Certificaciones digitales al completar rutas', 'Sesiones Q&A con instructores', 'Acceso anticipado a nuevos cursos'],
   },
 };
 

@@ -11,9 +11,9 @@ interface TierBadgeProps {
 
 const tierConfig: Record<Tier, { label: string; className: string; icon: string }> = {
   free: { label: 'Gratis', className: 'bg-muted text-muted-foreground border border-border', icon: 'PlayIcon' },
-  apertura: { label: 'Apertura', className: 'tier-badge-apertura', icon: 'CameraIcon' },
-  obturador: { label: 'Obturador', className: 'tier-badge-obturador', icon: 'StarIcon' },
-  diafragma: { label: 'Diafragma', className: 'tier-badge-diafragma', icon: 'SparklesIcon' },
+  apertura: { label: 'Básico', className: 'tier-badge-apertura', icon: 'CameraIcon' },
+  obturador: { label: 'Estándar', className: 'tier-badge-obturador', icon: 'StarIcon' },
+  diafragma: { label: 'VIP', className: 'tier-badge-diafragma', icon: 'SparklesIcon' },
 };
 
 export default function TierBadge({ tier, size = 'sm', showIcon = false }: TierBadgeProps) {
