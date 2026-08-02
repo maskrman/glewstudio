@@ -22,23 +22,24 @@ interface ProfileForm {
   notifyProgress: boolean;
 }
 
-const invoices = [
-{ id: 'inv-001', date: '01 jul 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
-{ id: 'inv-002', date: '01 jun 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
-{ id: 'inv-003', date: '01 may 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
-{ id: 'inv-004', date: '01 abr 2026', amount: '$25.00', status: 'Pagado', plan: 'Estándar', method: 'Visa ••••4821' },
-{ id: 'inv-005', date: '01 mar 2026', amount: '$10.00', status: 'Pagado', plan: 'Básico', method: 'Visa ••••4821' },
-{ id: 'inv-006', date: '01 feb 2026', amount: '$10.00', status: 'Pagado', plan: 'Básico', method: 'Visa ••••4821' }];
+interface Payment {
+  id: string;
+  amount: number;
+  currency: string;
+  plan: string;
+  status: string;
+  payment_method: string | null;
+  paid_at: string;
+}
 
-
-const downloads = [
-{ id: 'dl-001', name: 'Archivo RAW — Iluminación Rembrandt (Lección 4)', course: 'Iluminación Rembrandt para Retrato', date: '22 jul 2026', size: '48.2 MB', type: 'RAW' },
-{ id: 'dl-002', name: 'Esquema de Iluminación Rembrandt — PDF', course: 'Iluminación Rembrandt para Retrato', date: '22 jul 2026', size: '2.8 MB', type: 'PDF' },
-{ id: 'dl-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', course: 'Iluminación Rembrandt para Retrato', date: '20 jul 2026', size: '1.1 MB', type: 'PRESET' },
-{ id: 'dl-004', name: 'Archivo RAW — Fotografía de Producto Mesa de Luz', course: 'Fotografía de Producto en Mesa de Luz', date: '18 jul 2026', size: '62.5 MB', type: 'RAW' },
-{ id: 'dl-005', name: 'Flujo de Trabajo RAW — PDF Guía Rápida', course: 'Flujo de Trabajo RAW en Lightroom', date: '15 jul 2026', size: '4.2 MB', type: 'PDF' },
-{ id: 'dl-006', name: 'Preset Pack — Tonos Cinematográficos (6 presets)', course: 'Color Grading Cinematográfico', date: '12 jul 2026', size: '3.8 MB', type: 'PRESET' }];
-
+interface Download {
+  id: string;
+  file_name: string;
+  course_title: string;
+  file_type: string;
+  file_size: string | null;
+  downloaded_at: string;
+}
 
 const certificates = [
 { id: 'cert-001', course: 'Flujo de Trabajo RAW en Lightroom', completed: '10 jul 2026', instructor: 'Alejandro Vega', credential: 'GS-2026-LR-0481' },
@@ -66,6 +67,10 @@ export default function AccountScreen() {
   const [coursesInProgress, setCoursesInProgress] = useState(0);
   const [certificatesCount, setCertificatesCount] = useState(0);
   const [completedCourses, setCompletedCourses] = useState<{ id: string; course_id: string; course_title: string; course_instructor: string; completed_at: string | null }[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [downloads, setDownloads] = useState<Download[]>([]);
+  const [downloadsLoading, setDownloadsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -132,6 +137,48 @@ export default function AccountScreen() {
 
     fetchStats();
   }, [user]);
+
+  // Fetch payments when billing section is opened
+  useEffect(() => {
+    if (section !== 'facturacion' || !user) return;
+    const fetchPayments = async () => {
+      setPaymentsLoading(true);
+      try {
+        const { data } = await supabase
+          .from('payments')
+          .select('id, amount, currency, plan, status, payment_method, paid_at')
+          .eq('user_id', user.id)
+          .order('paid_at', { ascending: false });
+        setPayments(data ?? []);
+      } catch {
+        setPayments([]);
+      } finally {
+        setPaymentsLoading(false);
+      }
+    };
+    fetchPayments();
+  }, [section, user]);
+
+  // Fetch downloads when downloads section is opened
+  useEffect(() => {
+    if (section !== 'descargas' || !user) return;
+    const fetchDownloads = async () => {
+      setDownloadsLoading(true);
+      try {
+        const { data } = await supabase
+          .from('downloads')
+          .select('id, file_name, course_title, file_type, file_size, downloaded_at')
+          .eq('user_id', user.id)
+          .order('downloaded_at', { ascending: false });
+        setDownloads(data ?? []);
+      } catch {
+        setDownloads([]);
+      } finally {
+        setDownloadsLoading(false);
+      }
+    };
+    fetchDownloads();
+  }, [section, user]);
 
   // Format seconds into "Xh Ymin" or "Ymin"
   const formatWatchTime = (seconds: number): string => {
@@ -224,6 +271,10 @@ export default function AccountScreen() {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleRedownload = async (dl: Download) => {
+    toast.success(`Descargando ${dl.file_name}…`);
   };
 
   return (
@@ -485,13 +536,20 @@ export default function AccountScreen() {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                   <div>
                     <h2 className="text-lg font-700 text-foreground">Historial de Pagos</h2>
-                    <p className="text-sm text-muted-foreground">Visa terminada en 4821 · Próximo cargo: $25.00 el 1 ago 2026</p>
+                    <p className="text-sm text-muted-foreground">Registro de todos tus pagos realizados</p>
                   </div>
-                  <button className="btn-ghost px-4 py-2 text-sm font-600 flex items-center gap-2">
-                    <Icon name="PencilIcon" size={14} />
-                    Cambiar método
-                  </button>
                 </div>
+                {paymentsLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Icon name="ArrowPathIcon" size={28} className="text-muted-foreground animate-spin" />
+                  </div>
+                ) : payments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <Icon name="DocumentTextIcon" size={40} className="text-muted-foreground mb-4" />
+                    <h3 className="text-base font-700 text-foreground mb-2">Sin pagos registrados</h3>
+                    <p className="text-sm text-muted-foreground">Aquí aparecerán tus pagos una vez que actives o renueves tu suscripción.</p>
+                  </div>
+                ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -504,17 +562,21 @@ export default function AccountScreen() {
                       </tr>
                     </thead>
                     <tbody>
-                      {invoices.map((inv) =>
-                    <tr key={inv.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3.5 text-sm text-foreground font-mono">{inv.date}</td>
-                          <td className="px-5 py-3.5 text-sm text-foreground">
-                            Glewstudio — Plan {inv.plan}
+                      {payments.map((pmt) =>
+                    <tr key={pmt.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                          <td className="px-5 py-3.5 text-sm text-foreground font-mono">
+                            {new Date(pmt.paid_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{inv.method}</td>
-                          <td className="px-5 py-3.5 text-sm font-700 text-foreground font-mono">{inv.amount}</td>
+                          <td className="px-5 py-3.5 text-sm text-foreground">
+                            Glewstudio — Plan {pmt.plan}
+                          </td>
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{pmt.payment_method ?? '—'}</td>
+                          <td className="px-5 py-3.5 text-sm font-700 text-foreground font-mono">
+                            ${Number(pmt.amount).toFixed(2)}
+                          </td>
                           <td className="px-5 py-3.5">
                             <span className="text-xs font-600 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-                              {inv.status}
+                              {pmt.status === 'paid' ? 'Pagado' : pmt.status}
                             </span>
                           </td>
                           <td className="px-5 py-3.5">
@@ -528,6 +590,7 @@ export default function AccountScreen() {
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
             }
 
@@ -536,48 +599,62 @@ export default function AccountScreen() {
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <h2 className="text-lg font-700 text-foreground mb-0.5">Archivos Descargados</h2>
-                  <p className="text-sm text-muted-foreground">{downloads.length} archivos · Descargas ilimitadas con Plan Estándar</p>
+                  <p className="text-sm text-muted-foreground">
+                    {downloadsLoading ? '…' : `${downloads.length} archivo${downloads.length !== 1 ? 's' : ''} descargado${downloads.length !== 1 ? 's' : ''}`}
+                  </p>
                 </div>
+                {downloadsLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Icon name="ArrowPathIcon" size={28} className="text-muted-foreground animate-spin" />
+                  </div>
+                ) : downloads.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                    <Icon name="ArrowDownTrayIcon" size={40} className="text-muted-foreground mb-4" />
+                    <h3 className="text-base font-700 text-foreground mb-2">Sin descargas aún</h3>
+                    <p className="text-sm text-muted-foreground">Los archivos que descargues desde los cursos aparecerán aquí.</p>
+                  </div>
+                ) : (
                 <div className="divide-y divide-border">
                   {downloads.map((dl) =>
                 <div key={dl.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/20 transition-colors">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  dl.type === 'RAW' ? 'bg-primary/10' :
-                  dl.type === 'PDF' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`
+                  dl.file_type === 'RAW' ? 'bg-primary/10' :
+                  dl.file_type === 'PDF' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`
                   }>
                         <Icon
                       name="DocumentArrowDownIcon"
                       size={18}
                       className={
-                      dl.type === 'RAW' ? 'text-primary' :
-                      dl.type === 'PDF' ? 'text-blue-400' : 'text-emerald-400'
+                      dl.file_type === 'RAW' ? 'text-primary' :
+                      dl.file_type === 'PDF' ? 'text-blue-400' : 'text-emerald-400'
                       } />
-                    
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-600 text-foreground truncate">{dl.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{dl.course}</p>
+                        <p className="text-sm font-600 text-foreground truncate">{dl.file_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{dl.course_title}</p>
                       </div>
                       <div className="hidden sm:flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                        <span className="font-mono">{dl.date}</span>
-                        <span>{dl.size}</span>
+                        <span className="font-mono">
+                          {new Date(dl.downloaded_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                        {dl.file_size && <span>{dl.file_size}</span>}
                         <span className={`font-700 px-2 py-0.5 rounded-full ${
-                    dl.type === 'RAW' ? 'bg-primary/10 text-primary' :
-                    dl.type === 'PDF' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`
+                    dl.file_type === 'RAW' ? 'bg-primary/10 text-primary' :
+                    dl.file_type === 'PDF' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`
                     }>
-                          {dl.type}
+                          {dl.file_type}
                         </span>
                       </div>
                       <button
-                    onClick={() => toast.success(`Descargando ${dl.name}…`)}
+                    onClick={() => handleRedownload(dl)}
                     className="shrink-0 w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={`Volver a descargar ${dl.name}`}>
-                    
+                    aria-label={`Volver a descargar ${dl.file_name}`}>
                         <Icon name="ArrowDownTrayIcon" size={14} />
                       </button>
                     </div>
                 )}
                 </div>
+                )}
               </div>
             }
 
