@@ -105,13 +105,23 @@ export default function OtpVerifyScreen({
         return;
       }
 
-      // signup mode — insert subscription now that OTP is verified
+      // signup mode — refresh session so the server sees the confirmed email
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData?.session) {
+        // If refresh fails, the session may have expired — user needs to sign in manually
+        toast.success('¡Cuenta verificada! Por favor inicia sesión.');
+        router.push('/sign-up-login');
+        router.refresh();
+        return;
+      }
+
+      // insert subscription now that OTP is verified and session is fresh
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
+        const userId = refreshData.session.user?.id;
+        if (userId) {
           const { error: subError } = await supabase
             .from('subscriptions')
-            .insert({ user_id: user.id, tier: plan, status: 'active' });
+            .insert({ user_id: userId, tier: plan, status: 'active' });
           if (subError) {
             console.error('Subscription insert error:', subError.message);
           }

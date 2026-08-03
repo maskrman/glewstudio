@@ -51,12 +51,10 @@ export async function POST(req: NextRequest) {
       .eq('id', otpRecord.id);
 
     if (type === 'recovery') {
-      // For recovery: generate a password reset link so the client can update the password
-      // Return success — the client will show the new-password form
       return NextResponse.json({ success: true, verified: true }, { headers: corsHeaders });
     }
 
-    // For signup: confirm the user's email via admin API
+    // For signup: find the user and confirm their email
     const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
     if (getUserError) {
       return NextResponse.json({ error: getUserError.message }, { status: 500 });
@@ -77,7 +75,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, verified: true, userId: user.id }, { headers: corsHeaders });
+    return NextResponse.json(
+      { success: true, verified: true, userId: user.id },
+      { headers: corsHeaders }
+    );
   } catch (error) {
     console.error('verify-otp error:', error);
     return NextResponse.json(

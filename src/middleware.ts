@@ -77,8 +77,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users away from auth routes
-  if (isAuthRoute(pathname) && user) {
+  // Redirect authenticated AND confirmed users away from auth routes
+  // Allow unconfirmed users to stay on sign-up-login to complete OTP verification
+  if (isAuthRoute(pathname) && user && user.email_confirmed_at) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
