@@ -86,8 +86,7 @@ export default function AuthScreen() {
     try {
       await signIn(data.email, data.password);
       toast.success('¡Bienvenido a Glewstudio!');
-      router.push('/dashboard');
-      router.refresh();
+      window.location.href = '/dashboard';
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Credenciales incorrectas. Verifica tu correo y contraseña.';
       setLoginError(message);
