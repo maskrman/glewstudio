@@ -22,34 +22,34 @@ const COURSE_META = {
   thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png',
   thumbnailAlt: 'Studio photography lesson showing Rembrandt lighting technique with professional strobe setup',
   // Total duration in seconds (sum of all chapters)
-  totalSeconds: 202 * 60,
+  totalSeconds: 202 * 60
 };
 
 // Current lesson duration in seconds (Lección 4: 14:32)
 const CURRENT_LESSON_SECONDS = 14 * 60 + 32;
 
 const chapters = [
-  { id: 'ch-001', number: 1, title: 'Introducción al Esquema Rembrandt', duration: '08:42', completed: true, current: false },
-  { id: 'ch-002', number: 2, title: 'Historia y Origen de la Técnica', duration: '12:15', completed: true, current: false },
-  { id: 'ch-003', number: 3, title: 'Equipamiento Necesario', duration: '09:30', completed: true, current: false },
-  { id: 'ch-004', number: 4, title: 'Configuración del Key Light', duration: '14:32', completed: false, current: true },
-  { id: 'ch-005', number: 5, title: 'Posicionamiento del Modelo', duration: '11:18', completed: false, current: false },
-  { id: 'ch-006', number: 6, title: 'Ajuste del Fill Light', duration: '16:45', completed: false, current: false },
-  { id: 'ch-007', number: 7, title: 'El Triángulo de Luz en la Mejilla', duration: '13:22', completed: false, current: false },
-  { id: 'ch-008', number: 8, title: 'Variantes del Esquema', duration: '18:00', completed: false, current: false },
-  { id: 'ch-009', number: 9, title: 'Combinando con Luz de Borde', duration: '22:10', completed: false, current: false },
-  { id: 'ch-010', number: 10, title: 'Sesión Práctica en Estudio', duration: '31:40', completed: false, current: false },
-  { id: 'ch-011', number: 11, title: 'Edición Post-Producción', duration: '25:15', completed: false, current: false },
-  { id: 'ch-012', number: 12, title: 'Proyecto Final y Revisión', duration: '19:08', completed: false, current: false },
-];
+{ id: 'ch-001', number: 1, title: 'Introducción al Esquema Rembrandt', duration: '08:42', completed: true, current: false },
+{ id: 'ch-002', number: 2, title: 'Historia y Origen de la Técnica', duration: '12:15', completed: true, current: false },
+{ id: 'ch-003', number: 3, title: 'Equipamiento Necesario', duration: '09:30', completed: true, current: false },
+{ id: 'ch-004', number: 4, title: 'Configuración del Key Light', duration: '14:32', completed: false, current: true },
+{ id: 'ch-005', number: 5, title: 'Posicionamiento del Modelo', duration: '11:18', completed: false, current: false },
+{ id: 'ch-006', number: 6, title: 'Ajuste del Fill Light', duration: '16:45', completed: false, current: false },
+{ id: 'ch-007', number: 7, title: 'El Triángulo de Luz en la Mejilla', duration: '13:22', completed: false, current: false },
+{ id: 'ch-008', number: 8, title: 'Variantes del Esquema', duration: '18:00', completed: false, current: false },
+{ id: 'ch-009', number: 9, title: 'Combinando con Luz de Borde', duration: '22:10', completed: false, current: false },
+{ id: 'ch-010', number: 10, title: 'Sesión Práctica en Estudio', duration: '31:40', completed: false, current: false },
+{ id: 'ch-011', number: 11, title: 'Edición Post-Producción', duration: '25:15', completed: false, current: false },
+{ id: 'ch-012', number: 12, title: 'Proyecto Final y Revisión', duration: '19:08', completed: false, current: false }];
+
 
 const resources = [
-  { id: 'res-001', name: 'Archivo RAW — Lección 4 (Canon 5D MkIV)', size: '48.2 MB', type: 'RAW', tier: 'obturador' as SubscriptionTier, icon: 'DocumentArrowDownIcon' },
-  { id: 'res-002', name: 'Esquema de Iluminación Rembrandt — PDF', size: '2.8 MB', type: 'PDF', tier: 'obturador' as SubscriptionTier, icon: 'DocumentTextIcon' },
-  { id: 'res-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', size: '1.1 MB', type: 'PRESET', tier: 'obturador' as SubscriptionTier, icon: 'SwatchIcon' },
-  { id: 'res-004', name: 'LUT Cinematográfico — Rembrandt Gold', size: '0.8 MB', type: 'LUT', tier: 'diafragma' as SubscriptionTier, icon: 'FilmIcon' },
-  { id: 'res-005', name: 'Archivo RAW — Sesión Completa (12 tomas)', size: '312 MB', type: 'RAW', tier: 'diafragma' as SubscriptionTier, icon: 'DocumentArrowDownIcon' },
-];
+{ id: 'res-001', name: 'Archivo RAW — Lección 4 (Canon 5D MkIV)', size: '48.2 MB', type: 'RAW', tier: 'obturador' as SubscriptionTier, icon: 'DocumentArrowDownIcon' },
+{ id: 'res-002', name: 'Esquema de Iluminación Rembrandt — PDF', size: '2.8 MB', type: 'PDF', tier: 'obturador' as SubscriptionTier, icon: 'DocumentTextIcon' },
+{ id: 'res-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', size: '1.1 MB', type: 'PRESET', tier: 'obturador' as SubscriptionTier, icon: 'SwatchIcon' },
+{ id: 'res-004', name: 'LUT Cinematográfico — Rembrandt Gold', size: '0.8 MB', type: 'LUT', tier: 'diafragma' as SubscriptionTier, icon: 'FilmIcon' },
+{ id: 'res-005', name: 'Archivo RAW — Sesión Completa (12 tomas)', size: '312 MB', type: 'RAW', tier: 'diafragma' as SubscriptionTier, icon: 'DocumentArrowDownIcon' }];
+
 
 interface LockOverlayProps {
   requiredTier: SubscriptionTier;
@@ -68,18 +68,18 @@ function LockOverlay({ requiredTier, userTier, isAuthenticated, onClose, resourc
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-sm">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
-          requiredTier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'
-        }`}>
+        requiredTier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'}`
+        }>
           <Icon name="LockClosedIcon" size={22} className={requiredTier === 'diafragma' ? 'text-purple-400' : 'text-amber-400'} />
         </div>
         <h3 className="text-lg font-700 text-foreground text-center mb-2">Contenido Exclusivo</h3>
-        {resourceName && (
-          <p className="text-sm text-muted-foreground text-center mb-1">
+        {resourceName &&
+        <p className="text-sm text-muted-foreground text-center mb-1">
             <span className="text-foreground font-500">{resourceName}</span>
           </p>
-        )}
-        {!isAuthenticated ? (
-          <>
+        }
+        {!isAuthenticated ?
+        <>
             <p className="text-sm text-muted-foreground text-center mb-6">
               Inicia sesión para acceder a este contenido.
             </p>
@@ -89,13 +89,13 @@ function LockOverlay({ requiredTier, userTier, isAuthenticated, onClose, resourc
               </Link>
               <button onClick={onClose} className="btn-ghost py-2.5 text-sm font-600">Cancelar</button>
             </div>
-          </>
-        ) : (
-          <>
+          </> :
+
+        <>
             <p className="text-sm text-muted-foreground text-center mb-1">
-              {userTier
-                ? `Tu plan actual es ${TIER_LABELS[userTier]}.`
-                : 'No tienes una suscripción activa.'}
+              {userTier ?
+            `Tu plan actual es ${TIER_LABELS[userTier]}.` :
+            'No tienes una suscripción activa.'}
             </p>
             <p className="text-sm text-muted-foreground text-center mb-6">
               Este recurso requiere el{' '}
@@ -106,19 +106,19 @@ function LockOverlay({ requiredTier, userTier, isAuthenticated, onClose, resourc
             </p>
             <div className="flex flex-col gap-2">
               <Link
-                href="/account-subscription-management"
-                className="btn-primary py-2.5 text-sm text-center font-700"
-                onClick={onClose}
-              >
+              href="/account-subscription-management"
+              className="btn-primary py-2.5 text-sm text-center font-700"
+              onClick={onClose}>
+              
                 Actualizar a {tierLabel}
               </Link>
               <button onClick={onClose} className="btn-ghost py-2.5 text-sm font-600">Cancelar</button>
             </div>
           </>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 interface CourseAccessBlockProps {
@@ -138,21 +138,21 @@ function CourseAccessBlock({ isAuthenticated, userTier, requiredTier }: CourseAc
           <Icon name="LockClosedIcon" size={28} className="text-amber-400" />
         </div>
         <h2 className="text-xl font-700 text-white mb-2">Acceso Restringido</h2>
-        {!isAuthenticated ? (
-          <>
+        {!isAuthenticated ?
+        <>
             <p className="text-sm text-white/70 mb-6">
               Inicia sesión para ver este curso.
             </p>
             <Link href="/sign-up-login" className="btn-primary px-6 py-3 text-sm font-700 inline-block">
               Iniciar Sesión
             </Link>
-          </>
-        ) : (
-          <>
+          </> :
+
+        <>
             <p className="text-sm text-white/70 mb-2">
-              {userTier
-                ? `Tu plan actual es ${TIER_LABELS[userTier]}.`
-                : 'No tienes una suscripción activa.'}
+              {userTier ?
+            `Tu plan actual es ${TIER_LABELS[userTier]}.` :
+            'No tienes una suscripción activa.'}
             </p>
             <p className="text-sm text-white/70 mb-6">
               Este curso requiere el{' '}
@@ -160,16 +160,16 @@ function CourseAccessBlock({ isAuthenticated, userTier, requiredTier }: CourseAc
               ({tierPrice}) o superior.
             </p>
             <Link
-              href="/account-subscription-management"
-              className="btn-primary px-6 py-3 text-sm font-700 inline-block"
-            >
+            href="/account-subscription-management"
+            className="btn-primary px-6 py-3 text-sm font-700 inline-block">
+            
               Actualizar a {tierLabel}
             </Link>
           </>
-        )}
+        }
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 export default function VideoPlayerScreen() {
@@ -186,7 +186,7 @@ export default function VideoPlayerScreen() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showLockModal, setShowLockModal] = useState(false);
-  const [lockedResource, setLockedResource] = useState<{ name: string; tier: SubscriptionTier }>({ name: '', tier: null });
+  const [lockedResource, setLockedResource] = useState<{name: string;tier: SubscriptionTier;}>({ name: '', tier: null });
 
   // Progress tracking state
   const [lessonCompleted, setLessonCompleted] = useState(false);
@@ -253,11 +253,11 @@ export default function VideoPlayerScreen() {
       playStartTimeRef.current = null;
     }
 
-    const additionalSeconds = accumulatedSecondsRef.current > 0
-      ? accumulatedSecondsRef.current
-      : markComplete
-      ? CURRENT_LESSON_SECONDS
-      : 0;
+    const additionalSeconds = accumulatedSecondsRef.current > 0 ?
+    accumulatedSecondsRef.current :
+    markComplete ?
+    CURRENT_LESSON_SECONDS :
+    0;
 
     if (additionalSeconds === 0 && !markComplete) return;
 
@@ -271,13 +271,13 @@ export default function VideoPlayerScreen() {
         courseThumbnailAlt: COURSE_META.thumbnailAlt,
         additionalSeconds,
         totalSeconds: COURSE_META.totalSeconds,
-        completed: markComplete,
+        completed: markComplete
       });
       accumulatedSecondsRef.current = 0;
     } catch {
+
       // silently fail — don't interrupt the user experience
-    }
-  }, [user]);
+    }}, [user]);
 
   const handleVideoEnd = useCallback(async () => {
     if (progressFiredRef.current) return;
@@ -353,28 +353,28 @@ export default function VideoPlayerScreen() {
               fill
               priority
               className="object-cover"
-              sizes="100vw"
-            />
+              sizes="100vw" />
+            
 
             {/* Loading state */}
-            {isLoading && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
+            {isLoading &&
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
-            )}
+            }
 
             {/* Course access block overlay */}
-            {!isLoading && !canAccessCourse && (
-              <CourseAccessBlock
-                isAuthenticated={isAuthenticated}
-                userTier={userTier}
-                requiredTier={COURSE_REQUIRED_TIER}
-              />
-            )}
+            {!isLoading && !canAccessCourse &&
+            <CourseAccessBlock
+              isAuthenticated={isAuthenticated}
+              userTier={userTier}
+              requiredTier={COURSE_REQUIRED_TIER} />
+
+            }
 
             {/* Lesson completed overlay */}
-            {!isLoading && canAccessCourse && lessonCompleted && progress >= 100 && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
+            {!isLoading && canAccessCourse && lessonCompleted && progress >= 100 &&
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
                 <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-4">
                   <Icon name="CheckIcon" size={32} className="text-primary" />
                 </div>
@@ -385,19 +385,19 @@ export default function VideoPlayerScreen() {
                   Siguiente Lección
                 </Link>
               </div>
-            )}
+            }
 
             {/* Play/Pause overlay — only when user has access */}
-            {!isLoading && canAccessCourse && !lessonCompleted && (
-              <div
-                className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-                onClick={() => setPlaying(!playing)}
-              >
+            {!isLoading && canAccessCourse && !lessonCompleted &&
+            <div
+              className="absolute inset-0 flex items-center justify-center cursor-pointer group"
+              onClick={() => setPlaying(!playing)}>
+              
                 <div className={`w-16 h-16 rounded-full bg-black/50 border-2 border-white/30 flex items-center justify-center transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
                   <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={28} className="text-white ml-1" />
                 </div>
               </div>
-            )}
+            }
 
             {/* Controls bar */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-8">
@@ -413,8 +413,8 @@ export default function VideoPlayerScreen() {
                   <button
                     onClick={() => canAccessCourse && !lessonCompleted && setPlaying(!playing)}
                     className="text-white hover:text-primary transition-colors"
-                    aria-label={playing ? 'Pausar' : 'Reproducir'}
-                  >
+                    aria-label={playing ? 'Pausar' : 'Reproducir'}>
+                    
                     <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={22} />
                   </button>
                   <button className="text-white/70 hover:text-white transition-colors" aria-label="Anterior">
@@ -435,55 +435,55 @@ export default function VideoPlayerScreen() {
                   {/* Speed selector */}
                   <div className="relative">
                     <button
-                      onClick={() => { setShowSpeedMenu(!showSpeedMenu); setShowQualityMenu(false); }}
-                      className="text-white/70 hover:text-white text-xs font-600 px-2 py-1 rounded border border-white/20 hover:border-white/40 transition-colors"
-                    >
+                      onClick={() => {setShowSpeedMenu(!showSpeedMenu);setShowQualityMenu(false);}}
+                      className="text-white/70 hover:text-white text-xs font-600 px-2 py-1 rounded border border-white/20 hover:border-white/40 transition-colors">
+                      
                       {speed}
                     </button>
-                    {showSpeedMenu && (
-                      <div className="absolute bottom-8 right-0 bg-card border border-border rounded-lg overflow-hidden shadow-xl z-20">
-                        {['0.5x', '0.75x', '1x', '1.25x', '1.5x', '2x'].map((s) => (
-                          <button
-                            key={`speed-${s}`}
-                            onClick={() => { setSpeed(s); setShowSpeedMenu(false); }}
-                            className={`block w-full px-4 py-2 text-xs text-left hover:bg-muted transition-colors ${s === speed ? 'text-primary font-700' : 'text-foreground'}`}
-                          >
+                    {showSpeedMenu &&
+                    <div className="absolute bottom-8 right-0 bg-card border border-border rounded-lg overflow-hidden shadow-xl z-20">
+                        {['0.5x', '0.75x', '1x', '1.25x', '1.5x', '2x'].map((s) =>
+                      <button
+                        key={`speed-${s}`}
+                        onClick={() => {setSpeed(s);setShowSpeedMenu(false);}}
+                        className={`block w-full px-4 py-2 text-xs text-left hover:bg-muted transition-colors ${s === speed ? 'text-primary font-700' : 'text-foreground'}`}>
+                        
                             {s}
                           </button>
-                        ))}
+                      )}
                       </div>
-                    )}
+                    }
                   </div>
 
                   {/* Quality selector */}
                   <div className="relative">
                     <button
-                      onClick={() => { setShowQualityMenu(!showQualityMenu); setShowSpeedMenu(false); }}
-                      className="text-white/70 hover:text-white text-xs font-600 px-2 py-1 rounded border border-white/20 hover:border-white/40 transition-colors"
-                    >
+                      onClick={() => {setShowQualityMenu(!showQualityMenu);setShowSpeedMenu(false);}}
+                      className="text-white/70 hover:text-white text-xs font-600 px-2 py-1 rounded border border-white/20 hover:border-white/40 transition-colors">
+                      
                       {quality}
                     </button>
-                    {showQualityMenu && (
-                      <div className="absolute bottom-8 right-0 bg-card border border-border rounded-lg overflow-hidden shadow-xl z-20">
-                        {['720p', '1080p', '4K'].map((q) => (
-                          <button
-                            key={`quality-${q}`}
-                            onClick={() => { setQuality(q); setShowQualityMenu(false); }}
-                            className={`block w-full px-4 py-2 text-xs text-left hover:bg-muted transition-colors ${q === quality ? 'text-primary font-700' : 'text-foreground'}`}
-                          >
+                    {showQualityMenu &&
+                    <div className="absolute bottom-8 right-0 bg-card border border-border rounded-lg overflow-hidden shadow-xl z-20">
+                        {['720p', '1080p', '4K'].map((q) =>
+                      <button
+                        key={`quality-${q}`}
+                        onClick={() => {setQuality(q);setShowQualityMenu(false);}}
+                        className={`block w-full px-4 py-2 text-xs text-left hover:bg-muted transition-colors ${q === quality ? 'text-primary font-700' : 'text-foreground'}`}>
+                        
                             {q}
                             {q === '4K' && <span className="ml-2 text-xs tier-badge-diafragma px-1 rounded">Master</span>}
                           </button>
-                        ))}
+                      )}
                       </div>
-                    )}
+                    }
                   </div>
 
                   <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
                     className="text-white/70 hover:text-white transition-colors"
-                    aria-label="Mostrar/ocultar sidebar"
-                  >
+                    aria-label="Mostrar/ocultar sidebar">
+                    
                     <Icon name="QueueListIcon" size={18} />
                   </button>
                   <button className="text-white/70 hover:text-white transition-colors" aria-label="Pantalla completa">
@@ -502,11 +502,11 @@ export default function VideoPlayerScreen() {
                   <TierBadge tier="obturador" size="sm" />
                   <span className="text-xs text-muted-foreground">Lección 4 de 12</span>
                   {/* Show user's current tier badge */}
-                  {!isLoading && userTier && (
-                    <span className="text-xs text-muted-foreground">
+                  {!isLoading && userTier &&
+                  <span className="text-xs text-muted-foreground">
                       · Tu plan: <span className="text-foreground font-600">{TIER_LABELS[userTier]}</span>
                     </span>
-                  )}
+                  }
                 </div>
                 <h1 className="text-xl font-700 text-foreground mb-1">Configuración del Key Light</h1>
                 <p className="text-sm text-muted-foreground">
@@ -515,23 +515,23 @@ export default function VideoPlayerScreen() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {/* Mark as complete button */}
-                {canAccessCourse && user && (
-                  <button
-                    onClick={handleMarkLessonComplete}
-                    disabled={lessonCompleted || markingComplete}
-                    className={`px-3 py-1.5 text-xs flex items-center gap-1.5 rounded-lg border font-600 transition-all duration-200 ${
-                      lessonCompleted
-                        ? 'bg-green-500/10 text-green-400 border-green-500/30 cursor-default' :'btn-ghost hover:border-primary/40 hover:text-primary'
-                    }`}
-                  >
-                    {markingComplete ? (
-                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Icon name={lessonCompleted ? 'CheckCircleIcon' : 'CheckIcon'} size={14} />
-                    )}
+                {canAccessCourse && user &&
+                <button
+                  onClick={handleMarkLessonComplete}
+                  disabled={lessonCompleted || markingComplete}
+                  className={`px-3 py-1.5 text-xs flex items-center gap-1.5 rounded-lg border font-600 transition-all duration-200 ${
+                  lessonCompleted ?
+                  'bg-green-500/10 text-green-400 border-green-500/30 cursor-default' : 'btn-ghost hover:border-primary/40 hover:text-primary'}`
+                  }>
+                  
+                    {markingComplete ?
+                  <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> :
+
+                  <Icon name={lessonCompleted ? 'CheckCircleIcon' : 'CheckIcon'} size={14} />
+                  }
                     {lessonCompleted ? 'Completada' : 'Marcar como completada'}
                   </button>
-                )}
+                }
                 <button className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5">
                   <Icon name="BookmarkIcon" size={14} />
                   Guardar
@@ -551,12 +551,12 @@ export default function VideoPlayerScreen() {
             <div className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl max-w-lg">
               <div className="relative w-20 h-12 rounded-lg overflow-hidden shrink-0">
                 <AppImage
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1cb16a1d8-1785194269805.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
                   alt="Next lesson preview showing model positioning technique for Rembrandt lighting"
                   fill
                   className="object-cover"
-                  sizes="80px"
-                />
+                  sizes="80px" />
+                
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground mb-0.5">Siguiente lección</p>
@@ -571,118 +571,118 @@ export default function VideoPlayerScreen() {
         </div>
 
         {/* Sidebar */}
-        {sidebarOpen && (
-          <aside className="w-80 xl:w-96 shrink-0 border-l border-border flex flex-col bg-card overflow-hidden">
+        {sidebarOpen &&
+        <aside className="w-80 xl:w-96 shrink-0 border-l border-border flex flex-col bg-card overflow-hidden">
             {/* Tabs */}
             <div className="flex border-b border-border">
-              {(['chapters', 'resources'] as const).map((tab) => (
-                <button
-                  key={`player-tab-${tab}`}
-                  onClick={() => setSidebarTab(tab)}
-                  className={`flex-1 py-3.5 text-sm font-600 transition-colors ${
-                    sidebarTab === tab
-                      ? 'text-primary border-b-2 border-primary' :'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
+              {(['chapters', 'resources'] as const).map((tab) =>
+            <button
+              key={`player-tab-${tab}`}
+              onClick={() => setSidebarTab(tab)}
+              className={`flex-1 py-3.5 text-sm font-600 transition-colors ${
+              sidebarTab === tab ?
+              'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`
+              }>
+              
                   {tab === 'chapters' ? 'Capítulos' : 'Recursos'}
                 </button>
-              ))}
+            )}
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {sidebarTab === 'chapters' && (
-                <div className="p-2">
+              {sidebarTab === 'chapters' &&
+            <div className="p-2">
                   {chapters.map((ch) => {
-                    const chLocked = !canAccessCourse;
-                    const isCurrentCompleted = ch.current && lessonCompleted;
-                    return (
-                      <button
-                        key={ch.id}
-                        onClick={() => handleChapterClick(ch)}
-                        className={`w-full flex items-start gap-3 p-3 rounded-lg mb-1 text-left transition-colors ${
-                          ch.current && canAccessCourse
-                            ? 'bg-primary/10 border border-primary/20' :'hover:bg-muted'
-                        }`}
-                      >
+                const chLocked = !canAccessCourse;
+                const isCurrentCompleted = ch.current && lessonCompleted;
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => handleChapterClick(ch)}
+                    className={`w-full flex items-start gap-3 p-3 rounded-lg mb-1 text-left transition-colors ${
+                    ch.current && canAccessCourse ?
+                    'bg-primary/10 border border-primary/20' : 'hover:bg-muted'}`
+                    }>
+                    
                         <div className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center mt-0.5 ${
-                          chLocked
-                            ? 'border border-border'
-                            : ch.completed || isCurrentCompleted
-                            ? 'bg-primary text-primary-foreground'
-                            : ch.current
-                            ? 'border-2 border-primary' :'border border-border'
-                        }`}>
-                          {chLocked ? (
-                            <Icon name="LockClosedIcon" size={10} className="text-muted-foreground" />
-                          ) : ch.completed || isCurrentCompleted ? (
-                            <Icon name="CheckIcon" size={12} />
-                          ) : ch.current ? (
-                            <div className="w-2 h-2 bg-primary rounded-full" />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">{ch.number}</span>
-                          )}
+                    chLocked ?
+                    'border border-border' :
+                    ch.completed || isCurrentCompleted ?
+                    'bg-primary text-primary-foreground' :
+                    ch.current ?
+                    'border-2 border-primary' : 'border border-border'}`
+                    }>
+                          {chLocked ?
+                      <Icon name="LockClosedIcon" size={10} className="text-muted-foreground" /> :
+                      ch.completed || isCurrentCompleted ?
+                      <Icon name="CheckIcon" size={12} /> :
+                      ch.current ?
+                      <div className="w-2 h-2 bg-primary rounded-full" /> :
+
+                      <span className="text-xs text-muted-foreground">{ch.number}</span>
+                      }
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-500 truncate ${
-                            chLocked
-                              ? 'text-muted-foreground'
-                              : ch.current
-                              ? 'text-primary'
-                              : ch.completed || isCurrentCompleted
-                              ? 'text-muted-foreground'
-                              : 'text-foreground'
-                          }`}>
+                      chLocked ?
+                      'text-muted-foreground' :
+                      ch.current ?
+                      'text-primary' :
+                      ch.completed || isCurrentCompleted ?
+                      'text-muted-foreground' :
+                      'text-foreground'}`
+                      }>
                             {ch.title}
                           </p>
                           <p className="text-xs text-muted-foreground">{ch.duration}</p>
                         </div>
-                        {ch.current && canAccessCourse && !lessonCompleted && (
-                          <div className="shrink-0 w-1.5 h-8 bg-primary rounded-full mt-0.5" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+                        {ch.current && canAccessCourse && !lessonCompleted &&
+                    <div className="shrink-0 w-1.5 h-8 bg-primary rounded-full mt-0.5" />
+                    }
+                      </button>);
 
-              {sidebarTab === 'resources' && (
-                <div className="p-4">
+              })}
+                </div>
+            }
+
+              {sidebarTab === 'resources' &&
+            <div className="p-4">
                   <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
                     Archivos descargables para esta lección. Los recursos marcados requieren Plan Diafragma.
                   </p>
                   {/* Subscription status indicator */}
-                  {!isLoading && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg mb-4 text-xs ${
-                      canAccessCourse ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                    }`}>
+                  {!isLoading &&
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg mb-4 text-xs ${
+              canAccessCourse ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`
+              }>
                       <Icon name={canAccessCourse ? 'CheckCircleIcon' : 'LockClosedIcon'} size={13} />
                       <span>
-                        {isAuthenticated
-                          ? userTier
-                            ? `Plan activo: ${TIER_LABELS[userTier]}`
-                            : 'Sin suscripción activa' :'Inicia sesión para descargar'}
+                        {isAuthenticated ?
+                  userTier ?
+                  `Plan activo: ${TIER_LABELS[userTier]}` :
+                  'Sin suscripción activa' : 'Inicia sesión para descargar'}
                       </span>
                     </div>
-                  )}
+              }
                   <div className="flex flex-col gap-3">
                     {resources.map((res) => {
-                      const resLocked = !hasAccess(userTier, res.tier);
-                      return (
-                        <div
-                          key={res.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                            resLocked
-                              ? 'border-border opacity-60' :'border-border hover:border-primary/30 hover:bg-primary/5'
-                          }`}
-                        >
+                  const resLocked = !hasAccess(userTier, res.tier);
+                  return (
+                    <div
+                      key={res.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                      resLocked ?
+                      'border-border opacity-60' : 'border-border hover:border-primary/30 hover:bg-primary/5'}`
+                      }>
+                      
                           <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                            resLocked ? 'bg-muted' : 'bg-primary/10'
-                          }`}>
+                      resLocked ? 'bg-muted' : 'bg-primary/10'}`
+                      }>
                             <Icon
-                              name={res.icon as any}
-                              size={18}
-                              className={resLocked ? 'text-muted-foreground' : 'text-primary'}
-                            />
+                          name={res.icon as any}
+                          size={18}
+                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
+                        
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-600 text-foreground truncate">{res.name}</p>
@@ -691,50 +691,50 @@ export default function VideoPlayerScreen() {
                               <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-600">
                                 {res.type}
                               </span>
-                              {res.tier && (
-                                <span className={`text-xs px-1.5 py-0.5 rounded font-600 ${
-                                  res.tier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'
-                                }`}>
+                              {res.tier &&
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-600 ${
+                          res.tier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'}`
+                          }>
                                   {res.tier === 'diafragma' ? 'Master' : 'Pro'}
                                 </span>
-                              )}
+                          }
                             </div>
                           </div>
                           <button
-                            onClick={() => handleDownload(res)}
-                            className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                              resLocked
-                                ? 'bg-muted cursor-not-allowed' :'bg-primary/10 hover:bg-primary/20 text-primary'
-                            }`}
-                            aria-label={resLocked ? 'Contenido bloqueado' : `Descargar ${res.name}`}
-                          >
+                        onClick={() => handleDownload(res)}
+                        className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                        resLocked ?
+                        'bg-muted cursor-not-allowed' : 'bg-primary/10 hover:bg-primary/20 text-primary'}`
+                        }
+                        aria-label={resLocked ? 'Contenido bloqueado' : `Descargar ${res.name}`}>
+                        
                             <Icon
-                              name={resLocked ? 'LockClosedIcon' : 'ArrowDownTrayIcon'}
-                              size={14}
-                              className={resLocked ? 'text-muted-foreground' : 'text-primary'}
-                            />
+                          name={resLocked ? 'LockClosedIcon' : 'ArrowDownTrayIcon'}
+                          size={14}
+                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
+                        
                           </button>
-                        </div>
-                      );
-                    })}
+                        </div>);
+
+                })}
                   </div>
                 </div>
-              )}
+            }
             </div>
           </aside>
-        )}
+        }
       </div>
 
       {/* Lock Modal */}
-      {showLockModal && (
-        <LockOverlay
-          requiredTier={lockedResource.tier}
-          userTier={userTier}
-          isAuthenticated={isAuthenticated}
-          onClose={() => setShowLockModal(false)}
-          resourceName={lockedResource.name}
-        />
-      )}
-    </div>
-  );
+      {showLockModal &&
+      <LockOverlay
+        requiredTier={lockedResource.tier}
+        userTier={userTier}
+        isAuthenticated={isAuthenticated}
+        onClose={() => setShowLockModal(false)}
+        resourceName={lockedResource.name} />
+
+      }
+    </div>);
+
 }

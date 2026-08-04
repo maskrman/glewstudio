@@ -12,7 +12,7 @@ const instructor = {
   image: "https://img.rocket.new/generatedImages/rocket_gen_img_14144d2bd-1763299638094.png",
   imageAlt: 'Male photographer instructor with dark hair smiling in studio environment',
   tags: ['Retrato', 'Iluminación', 'Moda'],
-  bio: 'Fotógrafo profesional con más de 10 años de experiencia en campañas comerciales, editoriales de moda y producciones publicitarias. Ha trabajado con marcas internacionales y forma parte activa de la industria fotográfica.',
+  bio: 'Fotógrafo profesional con más de 10 años de experiencia en campañas comerciales, editoriales de moda y producciones publicitarias. Ha trabajado con marcas internacionales y forma parte activa de la industria fotográfica.'
 };
 
 export default function LandingInstructors() {
@@ -34,8 +34,8 @@ export default function LandingInstructors() {
               alt={instructor?.imageAlt}
               fill
               className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 768px) 100vw, 288px"
-            />
+              sizes="(max-width: 768px) 100vw, 288px" />
+            
             <div className="absolute inset-0 bg-gradient-to-t from-card/60 to-transparent md:bg-gradient-to-r md:from-transparent md:to-card/20" />
           </div>
 
@@ -68,18 +68,18 @@ export default function LandingInstructors() {
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
-              {instructor?.tags?.map((tag) => (
-                <span
-                  key={`inst-tag-${tag}`}
-                  className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full"
-                >
+              {instructor?.tags?.map((tag) =>
+              <span
+                key={`inst-tag-${tag}`}
+                className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full">
+                
                   {tag}
                 </span>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>);
+
 }

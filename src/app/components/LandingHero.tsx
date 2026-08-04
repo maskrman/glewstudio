@@ -10,10 +10,10 @@ export default function LandingHero() {
   const [studentCount, setStudentCount] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/user-count')
-      .then((res) => res.json())
-      .then((data) => setStudentCount(100 + (data.count ?? 0)))
-      .catch(() => setStudentCount(100));
+    fetch('/api/user-count').
+    then((res) => res.json()).
+    then((data) => setStudentCount(100 + (data.count ?? 0))).
+    catch(() => setStudentCount(100));
   }, []);
 
   const formatCount = (n: number) => {

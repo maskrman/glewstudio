@@ -17,7 +17,7 @@ const HERO_COURSE = {
   courseDuration: '8h 30min',
   courseTier: 'diafragma',
   courseRating: 4.9,
-  courseLessonCount: 24,
+  courseLessonCount: 24
 };
 
 export default function DashboardHero() {
@@ -30,8 +30,8 @@ export default function DashboardHero() {
     supabase?.auth?.getUser()?.then(({ data: { user } }) => {
       if (!user) return;
       supabase?.from('watchlist')?.select('id')?.eq('user_id', user?.id)?.eq('course_id', HERO_COURSE?.courseId)?.maybeSingle()?.then(({ data }) => {
-          if (data) setInList(true);
-        });
+        if (data) setInList(true);
+      });
     });
   }, []);
 
@@ -46,9 +46,9 @@ export default function DashboardHero() {
         setInList(true);
       }
     } catch {
+
       // silently fail if not authenticated
-    } finally {
-      setListLoading(false);
+    } finally {setListLoading(false);
     }
   };
 
@@ -107,16 +107,16 @@ export default function DashboardHero() {
               onClick={handleListToggle}
               disabled={listLoading}
               className={`btn-ghost inline-flex items-center gap-2 px-5 py-3 text-sm font-600 ${
-                inList ? 'border-primary/50 text-primary' : ''
-              }`}
-            >
-              {listLoading ? (
-                <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" />
-              ) : inList ? (
-                <Icon name="CheckIcon" size={18} className="text-primary" />
-              ) : (
-                <Icon name="PlusIcon" size={18} />
-              )}
+              inList ? 'border-primary/50 text-primary' : ''}`
+              }>
+              
+              {listLoading ?
+              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" /> :
+              inList ?
+              <Icon name="CheckIcon" size={18} className="text-primary" /> :
+
+              <Icon name="PlusIcon" size={18} />
+              }
               {inList ? 'En Mi Lista' : 'Añadir a Mi Lista'}
             </button>
             <Link
@@ -136,6 +136,6 @@ export default function DashboardHero() {
         aria-label={muted ? 'Activar sonido' : 'Silenciar'}>
         <Icon name={muted ? 'SpeakerXMarkIcon' : 'SpeakerWaveIcon'} size={18} />
       </button>
-    </section>
-  );
+    </section>);
+
 }

@@ -10,8 +10,8 @@ import {
   getUserSubscriptionTier,
   hasAccess,
   TIER_LABELS,
-  type SubscriptionTier,
-} from '@/lib/subscription';
+  type SubscriptionTier } from
+'@/lib/subscription';
 
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
 
@@ -22,7 +22,7 @@ export default function CourseDetailHero() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { setTierLoading(false); return; }
+    if (!user) {setTierLoading(false);return;}
     getUserSubscriptionTier().then((tier) => {
       setUserTier(tier);
       setTierLoading(false);
@@ -38,13 +38,13 @@ export default function CourseDetailHero() {
       {/* Background */}
       <div className="absolute inset-0">
         <AppImage
-          src="https://img.rocket.new/generatedImages/rocket_gen_img_1471ad175-1785194269851.png"
+          src="https://img.rocket.new/generatedImages/rocket_gen_img_1920bb65a-1785179235656.png"
           alt="Professional studio with Rembrandt lighting setup showing dramatic shadows and warm key light"
           fill
           priority
           className="object-cover object-center opacity-20"
-          sizes="100vw"
-        />
+          sizes="100vw" />
+        
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
       </div>
       <div className="relative z-10 max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16 py-12">
@@ -69,15 +69,15 @@ export default function CourseDetailHero() {
                 Nivel Intermedio
               </span>
               {/* Access status badge */}
-              {!isLoading && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-500 flex items-center gap-1 ${
-                  canAccessCourse
-                    ? 'bg-primary/10 text-primary' :'bg-muted text-muted-foreground'
-                }`}>
+              {!isLoading &&
+              <span className={`text-xs px-2 py-0.5 rounded-full font-500 flex items-center gap-1 ${
+              canAccessCourse ?
+              'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`
+              }>
                   <Icon name={canAccessCourse ? 'CheckCircleIcon' : 'LockClosedIcon'} size={11} />
                   {canAccessCourse ? 'Acceso incluido' : 'Requiere Plan Obturador'}
                 </span>
-              )}
+              }
             </div>
 
             <h1 className="text-3xl xl:text-4xl font-800 text-foreground mb-4 leading-tight">
@@ -92,9 +92,9 @@ export default function CourseDetailHero() {
             <div className="flex flex-wrap items-center gap-5 mb-6 text-sm">
               <div className="flex items-center gap-1.5">
                 <div className="flex">
-                  {Array.from({ length: 5 })?.map((_, i) => (
-                    <Icon key={`detail-star-${i}`} name="StarIcon" size={14} className="text-primary" variant="solid" />
-                  ))}
+                  {Array.from({ length: 5 })?.map((_, i) =>
+                  <Icon key={`detail-star-${i}`} name="StarIcon" size={14} className="text-primary" variant="solid" />
+                  )}
                 </div>
                 <span className="font-700 text-foreground">4.9</span>
                 <span className="text-muted-foreground">(1,248 reseñas)</span>
@@ -121,8 +121,8 @@ export default function CourseDetailHero() {
                   alt="Carlos Mendoza photography instructor portrait"
                   fill
                   className="object-cover"
-                  sizes="40px"
-                />
+                  sizes="40px" />
+                
               </div>
               <div>
                 <p className="text-sm font-600 text-foreground">Carlos Mendoza</p>
@@ -139,41 +139,41 @@ export default function CourseDetailHero() {
                 alt="Course preview thumbnail showing Rembrandt lighting triangle on portrait subject"
                 fill
                 className="object-cover"
-                sizes="400px"
-              />
+                sizes="400px" />
+              
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                {isLoading ? (
-                  <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center">
+                {isLoading ?
+                <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : canAccessCourse ? (
-                  <Link href="/video-player">
+                  </div> :
+                canAccessCourse ?
+                <Link href="/video-player">
                     <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-xl hover:bg-primary transition-colors">
                       <Icon name="PlayIcon" size={28} className="text-primary-foreground ml-1" />
                     </div>
-                  </Link>
-                ) : (
-                  <div className="text-center px-4">
+                  </Link> :
+
+                <div className="text-center px-4">
                     <div className="w-14 h-14 rounded-full bg-black/60 border border-white/20 flex items-center justify-center mx-auto mb-2">
                       <Icon name="LockClosedIcon" size={22} className="text-white/60" />
                     </div>
                     <p className="text-xs text-white/70">
-                      {isAuthenticated
-                        ? `Requiere ${TIER_LABELS[COURSE_REQUIRED_TIER!]}`
-                        : 'Inicia sesión para acceder'}
+                      {isAuthenticated ?
+                    `Requiere ${TIER_LABELS[COURSE_REQUIRED_TIER!]}` :
+                    'Inicia sesión para acceder'}
                     </p>
                   </div>
-                )}
+                }
               </div>
-              {canAccessCourse && (
-                <div className="absolute bottom-3 left-3 bg-black/70 text-xs text-white px-2 py-1 rounded font-500">
+              {canAccessCourse &&
+              <div className="absolute bottom-3 left-3 bg-black/70 text-xs text-white px-2 py-1 rounded font-500">
                   Vista previa — Lección 1
                 </div>
-              )}
+              }
             </div>
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>);
+
 }
