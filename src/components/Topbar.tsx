@@ -11,7 +11,7 @@ interface TopbarProps {
 
 const navLinks = [
   { label: 'Inicio', href: '/dashboard' },
-  { label: 'Cursos', href: '/course-detail' },
+  { label: 'Cursos', href: '/courses' },
   { label: 'En Vivo', href: '/dashboard' },
   { label: 'Mi Lista', href: '/watchlist' },
 ];
