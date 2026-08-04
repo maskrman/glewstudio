@@ -10,6 +10,7 @@ import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { TIER_LABELS, TIER_PRICES } from '@/lib/subscription';
 
 type AccountSection = 'perfil' | 'suscripcion' | 'facturacion' | 'descargas' | 'certificados';
 
@@ -53,6 +54,38 @@ const navItems: {id: AccountSection;label: string;icon: string;}[] = [
 { id: 'descargas', label: 'Descargas', icon: 'ArrowDownTrayIcon' },
 { id: 'certificados', label: 'Certificados', icon: 'TrophyIcon' }];
 
+
+const TIER_BENEFITS: Record<string, string[]> = {
+  apertura: [
+    'Acceso a más de 40 cursos de fotografía',
+    'Archivos de práctica básicos',
+    'Certificados digitales al completar cursos',
+    'Soporte por correo electrónico',
+  ],
+  obturador: [
+    'Todo lo incluido en Plan Apertura',
+    'Acceso a más de 80 cursos avanzados',
+    'Archivos RAW y esquemas de luz',
+    'Acceso a talleres grabados',
+    'Soporte prioritario',
+  ],
+  diafragma: [
+    'Todo lo incluido en Plan Obturador',
+    'Acceso completo a más de 120 cursos',
+    'Talleres en vivo con instructores',
+    'Revisión de portafolio personalizada',
+    'Certificaciones de rutas completas',
+    'Comunidad VIP exclusiva',
+    'Sesiones Q&A mensuales',
+    'Acceso offline a contenido',
+  ],
+};
+
+const TIER_ACCESS_LEVEL: Record<string, string> = {
+  apertura: 'Acceso Básico',
+  obturador: 'Acceso Avanzado',
+  diafragma: 'Acceso VIP Completo',
+};
 
 export default function AccountScreen() {
   const [section, setSection] = useState<AccountSection>('suscripcion');
@@ -275,6 +308,43 @@ export default function AccountScreen() {
 
   const handleRedownload = async (dl: Download) => {
     toast.success(`Descargando ${dl.file_name}…`);
+  };
+
+  const handleUpgradePlan = async (newTier: string) => {
+    if (!user) return;
+    try {
+      // Update subscription in DB
+      const { error } = await supabase
+        .from('subscriptions')
+        .upsert(
+          { user_id: user.id, tier: newTier, status: 'active', updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        );
+      if (error) throw error;
+
+      // Send upgrade confirmation email
+      const nextBillingDate = new Date();
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+      const billingDate = nextBillingDate.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      await fetch('/api/send-upgrade-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planName: TIER_LABELS[newTier] ?? newTier,
+          planPrice: TIER_PRICES[newTier] ?? '',
+          benefits: TIER_BENEFITS[newTier] ?? [],
+          accessLevel: TIER_ACCESS_LEVEL[newTier] ?? 'Acceso completo',
+          billingDate,
+          billingCycle: 'Mensual',
+        }),
+      });
+
+      setUserTier(newTier);
+      toast.success(`¡Plan actualizado a ${TIER_LABELS[newTier] ?? newTier}! Revisa tu correo para la confirmación.`);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al actualizar el plan');
+    }
   };
 
   return (
@@ -516,13 +586,12 @@ export default function AccountScreen() {
                           </span>
                       )}
                       </div>
-                      <Link
-                      href="/sign-up-login"
+                      <button
+                      onClick={() => handleUpgradePlan('diafragma')}
                       className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm font-700">
-                      
                         <Icon name="ArrowUpCircleIcon" size={16} />
                         Actualizar a VIP — $50/mes
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -725,9 +794,9 @@ export default function AccountScreen() {
                         <p className="text-sm font-600 text-foreground mb-0.5">Certificaciones de Rutas Completas</p>
                         <p className="text-xs text-muted-foreground">Las certificaciones de rutas de aprendizaje completas requieren el Plan VIP.</p>
                       </div>
-                      <Link href="/sign-up-login" className="btn-ghost px-3 py-1.5 text-xs font-600 shrink-0">
+                      <button onClick={() => handleUpgradePlan('diafragma')} className="btn-ghost px-3 py-1.5 text-xs font-600 shrink-0">
                         Actualizar
-                      </Link>
+                      </button>
                     </div>
                     )}
                   </>
