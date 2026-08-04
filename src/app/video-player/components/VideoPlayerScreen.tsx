@@ -25,8 +25,12 @@ const COURSE_META = {
   totalSeconds: 202 * 60
 };
 
-// Current lesson duration in seconds (Lección 4: 14:32)
+// Current lesson id and duration
+const CURRENT_LESSON_ID = 'lesson-004';
 const CURRENT_LESSON_SECONDS = 14 * 60 + 32;
+
+// Token refresh interval: refresh 10 minutes before expiry (50 min)
+const TOKEN_REFRESH_MS = 50 * 60 * 1000;
 
 const chapters = [
 { id: 'ch-001', number: 1, title: 'Introducción al Esquema Rembrandt', duration: '08:42', completed: true, current: false },
@@ -177,6 +181,11 @@ export default function VideoPlayerScreen() {
   const [userTier, setUserTier] = useState<SubscriptionTier>(null);
   const [tierLoading, setTierLoading] = useState(true);
 
+  // Secure video URL state
+  const [secureVideoUrl, setSecureVideoUrl] = useState<string | null>(null);
+  const [videoUrlLoading, setVideoUrlLoading] = useState(false);
+  const tokenRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [playing, setPlaying] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'chapters' | 'resources'>('chapters');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -210,6 +219,42 @@ export default function VideoPlayerScreen() {
   const canAccessCourse = hasAccess(userTier, COURSE_REQUIRED_TIER);
   const isAuthenticated = !!user;
   const isLoading = authLoading || tierLoading;
+
+  /**
+   * Fetch a signed video URL from the server-side API.
+   * The URL expires in 1 hour; we schedule a refresh every 50 minutes.
+   */
+  const fetchSecureVideoUrl = useCallback(async () => {
+    if (!user || !canAccessCourse) return;
+    setVideoUrlLoading(true);
+    try {
+      const res = await fetch(
+        `/api/video-token?courseId=${COURSE_META.id}&lessonId=${CURRENT_LESSON_ID}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.url) {
+        setSecureVideoUrl(data.url);
+        // Schedule next refresh before the token expires
+        if (tokenRefreshTimerRef.current) clearTimeout(tokenRefreshTimerRef.current);
+        tokenRefreshTimerRef.current = setTimeout(fetchSecureVideoUrl, TOKEN_REFRESH_MS);
+      }
+    } catch {
+      // Silently fail — video will fall back to thumbnail placeholder
+    } finally {
+      setVideoUrlLoading(false);
+    }
+  }, [user, canAccessCourse]);
+
+  // Fetch secure URL once user has access
+  useEffect(() => {
+    if (!isLoading && canAccessCourse && user) {
+      fetchSecureVideoUrl();
+    }
+    return () => {
+      if (tokenRefreshTimerRef.current) clearTimeout(tokenRefreshTimerRef.current);
+    };
+  }, [isLoading, canAccessCourse, user, fetchSecureVideoUrl]);
 
   // Track accumulated watch time while playing
   useEffect(() => {

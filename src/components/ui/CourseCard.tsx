@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-
+import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
 import TierBadge from './TierBadge';
 import { addToWatchlist, removeFromWatchlist } from '@/lib/watchlist';
@@ -96,6 +96,51 @@ export default function CourseCard({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
+        {/* Thumbnail */}
+        <div className="relative aspect-video overflow-hidden bg-muted">
+          <AppImage
+            src={thumbnail}
+            alt={thumbnailAlt}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 288px"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          {/* Duration badge */}
+          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs font-600 px-1.5 py-0.5 rounded">
+            {duration}
+          </div>
+          {/* Live badge */}
+          {isLive && (
+            <div className="absolute top-2 left-2 flex items-center gap-1 bg-red-600 text-white text-xs font-700 px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              EN VIVO
+            </div>
+          )}
+          {/* Lock overlay */}
+          {isLocked && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <Icon name="LockClosedIcon" size={24} className="text-white/80" />
+            </div>
+          )}
+          {/* Watchlist button — visible on hover */}
+          <button
+            onClick={handleWatchlistToggle}
+            disabled={watchlistLoading}
+            className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+              hovered || inWatchlist ? 'opacity-100' : 'opacity-0'
+            } ${inWatchlist ? 'bg-primary text-primary-foreground' : 'bg-black/60 text-white hover:bg-black/80'}`}
+            aria-label={inWatchlist ? 'Quitar de mi lista' : 'Añadir a mi lista'}
+          >
+            {watchlistLoading ? (
+              <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+            ) : inWatchlist ? (
+              <Icon name="CheckIcon" size={13} />
+            ) : (
+              <Icon name="PlusIcon" size={13} />
+            )}
+          </button>
+        </div>
+
         {/* Info */}
         <div className="p-3">
           <div className="flex items-start justify-between gap-2 mb-1">

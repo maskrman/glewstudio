@@ -10,7 +10,7 @@ import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import { TIER_LABELS, TIER_PRICES } from '@/lib/subscription';
+import { TIER_LABELS } from '@/lib/subscription';
 
 type AccountSection = 'perfil' | 'suscripcion' | 'facturacion' | 'descargas' | 'certificados';
 
@@ -313,32 +313,25 @@ export default function AccountScreen() {
   const handleUpgradePlan = async (newTier: string) => {
     if (!user) return;
     try {
-      // Update subscription in DB
-      const { error } = await supabase
-        .from('subscriptions')
-        .upsert(
-          { user_id: user.id, tier: newTier, status: 'active', updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' }
-        );
-      if (error) throw error;
+      // Get the current session token to authenticate the Edge Function call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No active session');
 
-      // Send upgrade confirmation email
-      const nextBillingDate = new Date();
-      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-      const billingDate = nextBillingDate.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/update-subscription`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ newTier }),
+        }
+      );
 
-      await fetch('/api/send-upgrade-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planName: TIER_LABELS[newTier] ?? newTier,
-          planPrice: TIER_PRICES[newTier] ?? '',
-          benefits: TIER_BENEFITS[newTier] ?? [],
-          accessLevel: TIER_ACCESS_LEVEL[newTier] ?? 'Acceso completo',
-          billingDate,
-          billingCycle: 'Mensual',
-        }),
-      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Error al actualizar el plan');
 
       setUserTier(newTier);
       toast.success(`¡Plan actualizado a ${TIER_LABELS[newTier] ?? newTier}! Revisa tu correo para la confirmación.`);
