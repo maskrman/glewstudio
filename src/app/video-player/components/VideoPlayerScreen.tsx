@@ -9,8 +9,9 @@ import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserSubscriptionTier, hasAccess, TIER_LABELS, TIER_PRICES, type SubscriptionTier } from '@/lib/subscription';
-import { updateCourseProgress } from '@/lib/courseProgress';
+
 import { createClient } from '@/lib/supabase/client';
+import { generateSignedVideoUrl, saveVideoProgress } from '@/app/actions/video';
 
 // Course tier requirement — this course requires at least "obturador"
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
@@ -30,8 +31,8 @@ const COURSE_META = {
 const CURRENT_LESSON_ID = 'lesson-004';
 const CURRENT_LESSON_SECONDS = 14 * 60 + 32;
 
-// Token refresh interval: refresh 10 minutes before expiry (50 min)
-const TOKEN_REFRESH_MS = 50 * 60 * 1000;
+// Token refresh interval: refresh 10 minutes before expiry (110 min for 2-hour tokens)
+const TOKEN_REFRESH_MS = 110 * 60 * 1000;
 
 const chapters = [
 { id: 'ch-001', number: 1, title: 'Introducción al Esquema Rembrandt', duration: '08:42', completed: true, current: false },
@@ -187,6 +188,9 @@ export default function VideoPlayerScreen() {
   const [videoUrlLoading, setVideoUrlLoading] = useState(false);
   const tokenRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Native video element ref for real playback tracking
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
   const [playing, setPlaying] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'chapters' | 'resources'>('chapters');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -206,6 +210,8 @@ export default function VideoPlayerScreen() {
   const accumulatedSecondsRef = useRef(0);
   // Ref to suppress real-time echo when this device is the one writing
   const isLocalWriteRef = useRef(false);
+  // Track whether 90% auto-complete has already been triggered
+  const autoCompleteTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -224,21 +230,17 @@ export default function VideoPlayerScreen() {
   const isLoading = authLoading || tierLoading;
 
   /**
-   * Fetch a signed video URL from the server-side API.
-   * The URL expires in 1 hour; we schedule a refresh every 50 minutes.
+   * Fetch a signed video URL using the Server Action.
+   * The URL expires in 2 hours; we schedule a refresh every 110 minutes.
    */
   const fetchSecureVideoUrl = useCallback(async () => {
     if (!user || !canAccessCourse) return;
     setVideoUrlLoading(true);
     try {
-      const res = await fetch(
-        `/api/video-token?courseId=${COURSE_META.id}&lessonId=${CURRENT_LESSON_ID}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.url) {
-        setSecureVideoUrl(data.url);
-        // Schedule next refresh before the token expires
+      const result = await generateSignedVideoUrl(COURSE_META.id, CURRENT_LESSON_ID);
+      if (result.url) {
+        setSecureVideoUrl(result.url);
+        // Schedule next refresh before the 2-hour token expires
         if (tokenRefreshTimerRef.current) clearTimeout(tokenRefreshTimerRef.current);
         tokenRefreshTimerRef.current = setTimeout(fetchSecureVideoUrl, TOKEN_REFRESH_MS);
       }
@@ -259,7 +261,7 @@ export default function VideoPlayerScreen() {
     };
   }, [isLoading, canAccessCourse, user, fetchSecureVideoUrl]);
 
-  // Track accumulated watch time while playing
+  // Track accumulated watch time while playing (for simulated progress fallback)
   useEffect(() => {
     if (!canAccessCourse || !user) return;
 
@@ -274,9 +276,9 @@ export default function VideoPlayerScreen() {
     }
   }, [playing, canAccessCourse, user]);
 
-  // Simulate video progress when playing
+  // Simulate video progress when playing (only when no real video URL is available)
   useEffect(() => {
-    if (!playing || !canAccessCourse) return;
+    if (!playing || !canAccessCourse || secureVideoUrl) return;
     const interval = setInterval(() => {
       setProgress((prev) => {
         const next = prev + 0.5;
@@ -289,7 +291,50 @@ export default function VideoPlayerScreen() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [playing, canAccessCourse]);
+  }, [playing, canAccessCourse, secureVideoUrl]);
+
+  /**
+   * Handle real video timeupdate events.
+   * - Updates progress bar from actual currentTime / duration
+   * - Auto-marks lesson complete when 90% of the video has been watched
+   */
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !canAccessCourse || !user) return;
+
+    const { currentTime, duration } = video;
+    if (!duration || duration === 0) return;
+
+    const pct = Math.min(100, Math.round((currentTime / duration) * 100));
+    setProgress(pct);
+
+    // Auto-mark complete at 90%
+    if (pct >= 90 && !autoCompleteTriggeredRef.current && !progressFiredRef.current) {
+      autoCompleteTriggeredRef.current = true;
+      progressFiredRef.current = true;
+      setLessonCompleted(true);
+
+      // Flush accumulated seconds from real playback
+      const additionalSeconds = Math.floor(currentTime);
+      accumulatedSecondsRef.current = 0;
+
+      isLocalWriteRef.current = true;
+      saveVideoProgress({
+        courseId: COURSE_META.id,
+        courseTitle: COURSE_META.title,
+        courseInstructor: COURSE_META.instructor,
+        courseThumbnail: COURSE_META.thumbnail,
+        courseThumbnailAlt: COURSE_META.thumbnailAlt,
+        additionalSeconds,
+        totalSeconds: COURSE_META.totalSeconds,
+        markComplete: true,
+      }).then(() => {
+        setTimeout(() => { isLocalWriteRef.current = false; }, 1500);
+      });
+
+      toast.success('¡Lección completada! Tu progreso ha sido guardado.');
+    }
+  }, [canAccessCourse, user]);
 
   const fireProgressUpdate = useCallback(async (markComplete: boolean) => {
     if (!user) return;
@@ -301,18 +346,21 @@ export default function VideoPlayerScreen() {
       playStartTimeRef.current = null;
     }
 
-    const additionalSeconds = accumulatedSecondsRef.current > 0 ?
-    accumulatedSecondsRef.current :
-    markComplete ?
-    CURRENT_LESSON_SECONDS :
-    0;
+    // If real video is available, use its currentTime instead
+    const videoEl = videoRef.current;
+    const additionalSeconds = videoEl
+      ? Math.floor(videoEl.currentTime)
+      : accumulatedSecondsRef.current > 0
+      ? accumulatedSecondsRef.current
+      : markComplete
+      ? CURRENT_LESSON_SECONDS
+      : 0;
 
     if (additionalSeconds === 0 && !markComplete) return;
 
     try {
       isLocalWriteRef.current = true;
-      await updateCourseProgress({
-        userId: user.id,
+      await saveVideoProgress({
         courseId: COURSE_META.id,
         courseTitle: COURSE_META.title,
         courseInstructor: COURSE_META.instructor,
@@ -320,14 +368,12 @@ export default function VideoPlayerScreen() {
         courseThumbnailAlt: COURSE_META.thumbnailAlt,
         additionalSeconds,
         totalSeconds: COURSE_META.totalSeconds,
-        completed: markComplete
+        markComplete,
       });
       accumulatedSecondsRef.current = 0;
     } catch {
-
       // silently fail — don't interrupt the user experience
     } finally {
-      // Allow a short delay before re-enabling real-time sync to absorb the echo
       setTimeout(() => { isLocalWriteRef.current = false; }, 1500);
     }
   }, [user]);
@@ -337,7 +383,7 @@ export default function VideoPlayerScreen() {
     progressFiredRef.current = true;
     setPlaying(false);
     setLessonCompleted(true);
-    await fireProgressUpdate(false);
+    await fireProgressUpdate(true);
     toast.success('¡Lección completada! Tu progreso ha sido guardado.');
   }, [fireProgressUpdate]);
 
@@ -350,6 +396,25 @@ export default function VideoPlayerScreen() {
     setMarkingComplete(false);
     toast.success('¡Lección marcada como completada!');
   };
+
+  // Sync playback rate when speed changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const rate = parseFloat(speed.replace('x', ''));
+    if (!isNaN(rate)) video.playbackRate = rate;
+  }, [speed]);
+
+  // Sync play/pause state with native video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !secureVideoUrl) return;
+    if (playing) {
+      video.play().catch(() => setPlaying(false));
+    } else {
+      video.pause();
+    }
+  }, [playing, secureVideoUrl]);
 
   const handleDownload = (res: typeof resources[0]) => {
     const resourceLocked = !hasAccess(userTier, res.tier);
@@ -386,7 +451,6 @@ export default function VideoPlayerScreen() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          // Skip if this device triggered the write
           if (isLocalWriteRef.current) return;
 
           const row = payload.new as {
@@ -402,7 +466,6 @@ export default function VideoPlayerScreen() {
           const totalSec = row.total_seconds ?? COURSE_META.totalSeconds;
           const remoteCompleted = row.completed ?? false;
 
-          // Compute percentage from watched/total seconds
           if (totalSec > 0) {
             const pct = Math.min(100, Math.round((watchedSec / totalSec) * 100));
             setProgress(pct);
@@ -451,17 +514,36 @@ export default function VideoPlayerScreen() {
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300`}>
           {/* Player */}
           <div className="relative bg-black w-full" style={{ aspectRatio: '16/9' }}>
-            <AppImage
-              src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
-              alt="Studio photography lesson showing Rembrandt lighting technique with professional strobe setup"
-              fill
-              priority
-              className="object-cover"
-              sizes="100vw" />
-            
+
+            {/* Native video element — shown when signed URL is available */}
+            {secureVideoUrl && canAccessCourse && (
+              <video
+                ref={videoRef}
+                src={secureVideoUrl}
+                className="absolute inset-0 w-full h-full object-contain"
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleVideoEnd}
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                controlsList="nodownload"
+                disablePictureInPicture={false}
+                playsInline
+              />
+            )}
+
+            {/* Thumbnail fallback — shown when no signed URL yet */}
+            {!secureVideoUrl && (
+              <AppImage
+                src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
+                alt="Studio photography lesson showing Rembrandt lighting technique with professional strobe setup"
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw" />
+            )}
 
             {/* Loading state */}
-            {isLoading &&
+            {(isLoading || videoUrlLoading) &&
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
@@ -473,11 +555,10 @@ export default function VideoPlayerScreen() {
               isAuthenticated={isAuthenticated}
               userTier={userTier}
               requiredTier={COURSE_REQUIRED_TIER} />
-
             }
 
             {/* Lesson completed overlay */}
-            {!isLoading && canAccessCourse && lessonCompleted && progress >= 100 &&
+            {!isLoading && canAccessCourse && lessonCompleted && progress >= 90 &&
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
                 <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-4">
                   <Icon name="CheckIcon" size={32} className="text-primary" />
@@ -496,7 +577,6 @@ export default function VideoPlayerScreen() {
             <div
               className="absolute inset-0 flex items-center justify-center cursor-pointer group"
               onClick={() => setPlaying(!playing)}>
-              
                 <div className={`w-16 h-16 rounded-full bg-black/50 border-2 border-white/30 flex items-center justify-center transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
                   <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={28} className="text-white ml-1" />
                 </div>
@@ -518,7 +598,6 @@ export default function VideoPlayerScreen() {
                     onClick={() => canAccessCourse && !lessonCompleted && setPlaying(!playing)}
                     className="text-white hover:text-primary transition-colors"
                     aria-label={playing ? 'Pausar' : 'Reproducir'}>
-                    
                     <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={22} />
                   </button>
                   <button className="text-white/70 hover:text-white transition-colors" aria-label="Anterior">
