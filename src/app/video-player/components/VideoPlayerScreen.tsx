@@ -12,6 +12,7 @@ import { getUserSubscriptionTier, hasAccess, TIER_LABELS, TIER_PRICES, type Subs
 
 import { createClient } from '@/lib/supabase/client';
 import { generateSignedVideoUrl, saveVideoProgress } from '@/app/actions/video';
+import LessonResources from '@/components/LessonResources';
 
 // Course tier requirement — this course requires at least "obturador"
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
@@ -49,12 +50,7 @@ const chapters = [
 { id: 'ch-012', number: 12, title: 'Proyecto Final y Revisión', duration: '19:08', completed: false, current: false }];
 
 
-const resources = [
-{ id: 'res-001', name: 'Archivo RAW — Lección 4 (Canon 5D MkIV)', size: '48.2 MB', type: 'RAW', tier: 'obturador' as SubscriptionTier, icon: 'DocumentArrowDownIcon' },
-{ id: 'res-002', name: 'Esquema de Iluminación Rembrandt — PDF', size: '2.8 MB', type: 'PDF', tier: 'obturador' as SubscriptionTier, icon: 'DocumentTextIcon' },
-{ id: 'res-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', size: '1.1 MB', type: 'PRESET', tier: 'obturador' as SubscriptionTier, icon: 'SwatchIcon' },
-{ id: 'res-004', name: 'LUT Cinematográfico — Rembrandt Gold', size: '0.8 MB', type: 'LUT', tier: 'diafragma' as SubscriptionTier, icon: 'FilmIcon' },
-{ id: 'res-005', name: 'Archivo RAW — Sesión Completa (12 tomas)', size: '312 MB', type: 'RAW', tier: 'diafragma' as SubscriptionTier, icon: 'DocumentArrowDownIcon' }];
+// Resources are now loaded dynamically from Supabase via LessonResources component
 
 
 interface LockOverlayProps {
@@ -415,16 +411,6 @@ export default function VideoPlayerScreen() {
       video.pause();
     }
   }, [playing, secureVideoUrl]);
-
-  const handleDownload = (res: typeof resources[0]) => {
-    const resourceLocked = !hasAccess(userTier, res.tier);
-    if (!isAuthenticated || resourceLocked) {
-      setLockedResource({ name: res.name, tier: res.tier });
-      setShowLockModal(true);
-      return;
-    }
-    toast.success(`Descargando ${res.name}…`);
-  };
 
   const handleChapterClick = (ch: typeof chapters[0]) => {
     if (!canAccessCourse) {
@@ -829,79 +815,13 @@ export default function VideoPlayerScreen() {
             }
 
               {sidebarTab === 'resources' &&
-            <div className="p-4">
-                  <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                    Archivos descargables para esta lección. Los recursos marcados requieren Plan Diafragma.
-                  </p>
-                  {/* Subscription status indicator */}
-                  {!isLoading &&
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg mb-4 text-xs ${
-              canAccessCourse ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`
-              }>
-                      <Icon name={canAccessCourse ? 'CheckCircleIcon' : 'LockClosedIcon'} size={13} />
-                      <span>
-                        {isAuthenticated ?
-                  userTier ?
-                  `Plan activo: ${TIER_LABELS[userTier]}` :
-                  'Sin suscripción activa' : 'Inicia sesión para descargar'}
-                      </span>
-                    </div>
-              }
-                  <div className="flex flex-col gap-3">
-                    {resources.map((res) => {
-                  const resLocked = !hasAccess(userTier, res.tier);
-                  return (
-                    <div
-                      key={res.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                      resLocked ?
-                      'border-border opacity-60' : 'border-border hover:border-primary/30 hover:bg-primary/5'}`
-                      }>
-                      
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                      resLocked ? 'bg-muted' : 'bg-primary/10'}`
-                      }>
-                            <Icon
-                          name={res.icon as any}
-                          size={18}
-                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
-                        
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-600 text-foreground truncate">{res.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-muted-foreground">{res.size}</span>
-                              <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-600">
-                                {res.type}
-                              </span>
-                              {res.tier &&
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-600 ${
-                          res.tier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'}`
-                          }>
-                                  {res.tier === 'diafragma' ? 'Master' : 'Pro'}
-                                </span>
-                          }
-                            </div>
-                          </div>
-                          <button
-                        onClick={() => handleDownload(res)}
-                        className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                        resLocked ?
-                        'bg-muted cursor-not-allowed' : 'bg-primary/10 hover:bg-primary/20 text-primary'}`
-                        }
-                        aria-label={resLocked ? 'Contenido bloqueado' : `Descargar ${res.name}`}>
-                        
-                            <Icon
-                          name={resLocked ? 'LockClosedIcon' : 'ArrowDownTrayIcon'}
-                          size={14}
-                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
-                        
-                          </button>
-                        </div>);
-
-                })}
-                  </div>
-                </div>
+            <LessonResources
+                  courseId={COURSE_META.id}
+                  lessonId={CURRENT_LESSON_ID}
+                  userTier={userTier}
+                  isAuthenticated={isAuthenticated}
+                  isLoading={isLoading}
+                />
             }
             </div>
           </aside>
