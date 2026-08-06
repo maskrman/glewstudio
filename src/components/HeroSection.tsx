@@ -6,13 +6,10 @@ import Link from 'next/link';
 export default function HeroSection() {
   return (
     <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background video */}
-      <video
-        src="/videos/hero-bg.mp4"
-        autoPlay
-        loop
-        muted
-        playsInline
+      {/* GIF de fondo desde Google Drive */}
+      <img
+        src="https://lh3.googleusercontent.com/d/1johwz1cQISIyaG4vtN-ikL_RHOlfKVE-"
+        alt="Glew Studio Background"
         className="absolute inset-0 w-full h-full object-cover object-center z-0"
       />
 
