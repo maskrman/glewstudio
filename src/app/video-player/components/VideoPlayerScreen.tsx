@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserSubscriptionTier, hasAccess, TIER_LABELS, TIER_PRICES, type SubscriptionTier } from '@/lib/subscription';
 import { updateCourseProgress } from '@/lib/courseProgress';
+import { createClient } from '@/lib/supabase/client';
 
 // Course tier requirement — this course requires at least "obturador"
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
@@ -203,6 +204,8 @@ export default function VideoPlayerScreen() {
   const progressFiredRef = useRef(false);
   const playStartTimeRef = useRef<number | null>(null);
   const accumulatedSecondsRef = useRef(0);
+  // Ref to suppress real-time echo when this device is the one writing
+  const isLocalWriteRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -307,6 +310,7 @@ export default function VideoPlayerScreen() {
     if (additionalSeconds === 0 && !markComplete) return;
 
     try {
+      isLocalWriteRef.current = true;
       await updateCourseProgress({
         userId: user.id,
         courseId: COURSE_META.id,
@@ -322,7 +326,11 @@ export default function VideoPlayerScreen() {
     } catch {
 
       // silently fail — don't interrupt the user experience
-    }}, [user]);
+    } finally {
+      // Allow a short delay before re-enabling real-time sync to absorb the echo
+      setTimeout(() => { isLocalWriteRef.current = false; }, 1500);
+    }
+  }, [user]);
 
   const handleVideoEnd = useCallback(async () => {
     if (progressFiredRef.current) return;
@@ -361,6 +369,57 @@ export default function VideoPlayerScreen() {
     }
     toast.info(`Saltando a: ${ch.title}`);
   };
+
+  // Real-time subscription: sync progress from other devices
+  useEffect(() => {
+    if (!user || !canAccessCourse) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`course_progress_${user.id}_${COURSE_META.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'course_progress',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Skip if this device triggered the write
+          if (isLocalWriteRef.current) return;
+
+          const row = payload.new as {
+            course_id?: string;
+            watched_seconds?: number;
+            total_seconds?: number;
+            completed?: boolean;
+          } | null;
+
+          if (!row || row.course_id !== COURSE_META.id) return;
+
+          const watchedSec = row.watched_seconds ?? 0;
+          const totalSec = row.total_seconds ?? COURSE_META.totalSeconds;
+          const remoteCompleted = row.completed ?? false;
+
+          // Compute percentage from watched/total seconds
+          if (totalSec > 0) {
+            const pct = Math.min(100, Math.round((watchedSec / totalSec) * 100));
+            setProgress(pct);
+          }
+
+          if (remoteCompleted && !progressFiredRef.current) {
+            progressFiredRef.current = true;
+            setLessonCompleted(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, canAccessCourse]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
