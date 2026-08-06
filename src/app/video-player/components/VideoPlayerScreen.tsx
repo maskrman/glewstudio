@@ -198,6 +198,10 @@ export default function VideoPlayerScreen() {
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockedResource, setLockedResource] = useState<{name: string;tier: SubscriptionTier;}>({ name: '', tier: null });
 
+  // Controls auto-hide state
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Progress tracking state
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
@@ -208,6 +212,32 @@ export default function VideoPlayerScreen() {
   const isLocalWriteRef = useRef(false);
   // Track whether 90% auto-complete has already been triggered
   const autoCompleteTriggeredRef = useRef(false);
+
+  // Show controls and reset hide timer
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
+    if (playing) {
+      controlsHideTimerRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 3000);
+    }
+  }, [playing]);
+
+  // Reset timer whenever playing state changes
+  useEffect(() => {
+    if (!playing) {
+      setControlsVisible(true);
+      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
+    } else {
+      controlsHideTimerRef.current = setTimeout(() => {
+        setControlsVisible(false);
+      }, 3000);
+    }
+    return () => {
+      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
+    };
+  }, [playing]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -499,7 +529,13 @@ export default function VideoPlayerScreen() {
         {/* Video area */}
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300`}>
           {/* Player */}
-          <div className="relative bg-black w-full" style={{ aspectRatio: '16/9' }}>
+          <div
+            className="relative bg-black w-full"
+            style={{ aspectRatio: '16/9' }}
+            onMouseMove={showControls}
+            onMouseEnter={showControls}
+            onTouchStart={showControls}
+          >
 
             {/* Native video element — shown when signed URL is available */}
             {secureVideoUrl && canAccessCourse && (
@@ -562,7 +598,7 @@ export default function VideoPlayerScreen() {
             {!isLoading && canAccessCourse && !lessonCompleted &&
             <div
               className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-              onClick={() => setPlaying(!playing)}>
+              onClick={() => { setPlaying(!playing); showControls(); }}>
                 <div className={`w-16 h-16 rounded-full bg-black/50 border-2 border-white/30 flex items-center justify-center transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
                   <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={28} className="text-white ml-1" />
                 </div>
@@ -570,7 +606,7 @@ export default function VideoPlayerScreen() {
             }
 
             {/* Controls bar */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-8">
+            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
               {/* Progress */}
               <div className="mb-3 group cursor-pointer">
                 <div className="h-1 bg-white/20 rounded-full overflow-hidden group-hover:h-1.5 transition-all">
