@@ -6,7 +6,7 @@ import Link from 'next/link';
 // Replace this URL with your actual Supabase Storage video URL
 // e.g. `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/hero-video/background.mp4`
 const VIDEO_URL =
-  'https://www.w3schools.com/html/mov_bbb.mp4';
+  'https://videos.pexels.com/video-files/3252925/3252925-uhd_2560_1440_25fps.mp4';
 
 export default function LandingHero() {
   const videoRef = useRef<HTMLVideoElement>(null);
