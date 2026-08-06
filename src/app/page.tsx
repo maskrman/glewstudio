@@ -1,6 +1,5 @@
 import React from 'react';
 import HeroSection from '@/components/HeroSection';
-import LandingHero from './components/LandingHero';
 import LandingPlans from './components/LandingPlans';
 import LandingCategories from './components/LandingCategories';
 import LandingInstructors from './components/LandingInstructors';
@@ -13,7 +12,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <LandingTopbar />
       <HeroSection />
-      <LandingHero />
       <LandingCategories />
       <LandingPlans />
       <LandingInstructors />
