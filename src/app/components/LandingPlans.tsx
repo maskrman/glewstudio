@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 
@@ -80,13 +80,47 @@ function getAnnualTotal(monthly: number) {
   return Math.round(getAnnualMonthly(monthly) * 12);
 }
 
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
 export default function LandingPlans() {
   const [annual, setAnnual] = useState(false);
+  const { ref: headerRef, inView: headerInView } = useInView(0.2);
+  const { ref: cardsRef, inView: cardsInView } = useInView(0.1);
 
   return (
     <section id="planes" className="py-20 bg-secondary/30">
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
-        <div className="text-center mb-12">
+
+        {/* Animated header */}
+        <div
+          ref={headerRef}
+          className="text-center mb-12 transition-all duration-700"
+          style={{
+            opacity: headerInView ? 1 : 0,
+            transform: headerInView ? 'translateY(0)' : 'translateY(32px)',
+          }}
+        >
           <p className="text-xs font-700 text-primary tracking-widest uppercase mb-2">Planes</p>
           <h2 className="text-hero-md font-800 text-foreground mb-4">
             Elige tu Nivel de Aprendizaje
@@ -96,7 +130,14 @@ export default function LandingPlans() {
           </p>
 
           {/* Billing toggle */}
-          <div className="inline-flex items-center gap-3 bg-muted rounded-full p-1">
+          <div
+            className="inline-flex items-center gap-3 bg-muted rounded-full p-1 transition-all duration-500"
+            style={{
+              opacity: headerInView ? 1 : 0,
+              transform: headerInView ? 'scale(1)' : 'scale(0.9)',
+              transitionDelay: '200ms',
+            }}
+          >
             <button
               onClick={() => setAnnual(false)}
               className={`px-4 py-1.5 rounded-full text-sm font-600 transition-all ${
@@ -119,8 +160,9 @@ export default function LandingPlans() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
-          {plans?.map((plan) => {
+        {/* Animated plan cards */}
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 xl:gap-8">
+          {plans?.map((plan, index) => {
             const displayPrice = annual
               ? getAnnualMonthly(plan.monthlyPrice)
               : plan.monthlyPrice;
@@ -129,7 +171,13 @@ export default function LandingPlans() {
             return (
               <div
                 key={plan?.id}
-                className={`relative rounded-2xl border ${plan?.borderColor} ${plan?.highlightColor} p-6 flex flex-col transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10`}
+                className={`relative rounded-2xl border ${plan?.borderColor} ${plan?.highlightColor} p-6 flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1`}
+                style={{
+                  opacity: cardsInView ? 1 : 0,
+                  transform: cardsInView ? 'translateY(0)' : 'translateY(48px)',
+                  transition: `opacity 0.6s ease, transform 0.6s ease, box-shadow 0.3s ease`,
+                  transitionDelay: cardsInView ? `${index * 120}ms` : '0ms',
+                }}
               >
                 {plan?.recommended && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-700 px-4 py-1 rounded-full">
@@ -161,7 +209,14 @@ export default function LandingPlans() {
 
                 <ul className="flex flex-col gap-3 mb-8 flex-1">
                   {plan?.features?.map((feature, fi) => (
-                    <li key={`${plan?.id}-feature-${fi}`} className="flex items-start gap-2.5">
+                    <li
+                      key={`${plan?.id}-feature-${fi}`}
+                      className="flex items-start gap-2.5 transition-all duration-300"
+                      style={{
+                        opacity: cardsInView ? 1 : 0,
+                        transitionDelay: cardsInView ? `${index * 120 + fi * 40 + 300}ms` : '0ms',
+                      }}
+                    >
                       {feature?.included ? (
                         <Icon name="CheckCircleIcon" size={16} className="text-primary shrink-0 mt-0.5" variant="solid" />
                       ) : (
