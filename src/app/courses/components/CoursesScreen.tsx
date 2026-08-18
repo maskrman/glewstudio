@@ -29,28 +29,28 @@ interface CourseWithProgress {
 // All available courses
 const ALL_COURSES: CourseWithProgress[] = [
 { id: 'cw-001', title: 'Iluminación Rembrandt para Retrato', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1d731ee8d-1779952599495.png', thumbnailAlt: 'Studio lighting setup with Rembrandt pattern creating dramatic shadows on portrait subject', duration: '14:32', tier: 'obturador', lessonCount: 12, rating: 4.9, category: 'Iluminación de Estudio', price: 349 },
-{ id: 'cw-002', title: 'Retoque de Piel en Photoshop CC', instructor: 'Sofía Reyes', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_189deaf40-1768079839052.png', thumbnailAlt: 'Professional photo retouching workflow showing skin smoothing techniques in Photoshop', duration: '22:15', tier: 'apertura', lessonCount: 8, rating: 4.8, category: 'Edición y Retoque', price: 319 },
+{ id: 'cw-002', title: 'Retoque de Piel en Photoshop CC', instructor: 'Sofía Reyes', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1aa26c31d-1785844143724.png", thumbnailAlt: 'Professional photo retouching workflow showing skin smoothing techniques in Photoshop', duration: '22:15', tier: 'apertura', lessonCount: 8, rating: 4.8, category: 'Edición y Retoque', price: 319 },
 { id: 'cw-003', title: 'Fotografía de Producto en Mesa de Luz', instructor: 'Sofía Reyes', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_18c3fcab2-1772196420648.png', thumbnailAlt: 'Elegant product photography on light table with minimalist composition', duration: '18:44', tier: 'apertura', lessonCount: 10, rating: 4.7, category: 'Fotografía de Producto', price: 329 },
 { id: 'cw-004', title: 'Color Grading Cinematográfico', instructor: 'Alejandro Vega', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1e45302fc-1783851831373.png', thumbnailAlt: 'Color grading workflow in Lightroom with cinematic teal and orange look applied', duration: '31:20', tier: 'obturador', lessonCount: 16, rating: 4.9, category: 'Edición y Retoque', price: 379 },
 { id: 'cw-005', title: 'Esquemas de Tres Puntos de Luz', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_113c48f0e-1772615974348.png', thumbnailAlt: 'Three-point lighting diagram with key light, fill light, and back light setup in studio', duration: '26:10', tier: 'obturador', lessonCount: 14, rating: 4.8, category: 'Iluminación de Estudio', price: 359 },
-{ id: 'sl-001', title: 'Luz Natural vs Luz Artificial en Estudio', instructor: 'Carlos Mendoza', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1e2564218-1785808847287.png", thumbnailAlt: 'Comparison of natural window light and artificial strobe light in photography studio', duration: '45:00', tier: 'apertura', lessonCount: 18, rating: 4.8, category: 'Iluminación de Estudio', price: 309 },
+{ id: 'sl-001', title: 'Luz Natural vs Luz Artificial en Estudio', instructor: 'Carlos Mendoza', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_154854948-1787082103072.png", thumbnailAlt: 'Comparison of natural window light and artificial strobe light in photography studio', duration: '45:00', tier: 'apertura', lessonCount: 18, rating: 4.8, category: 'Iluminación de Estudio', price: 309 },
 { id: 'sl-002', title: 'Softboxes, Paraguas y Modificadores', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_129426577-1785194268625.png', thumbnailAlt: 'Array of photography light modifiers including softboxes and octaboxes on studio floor', duration: '38:00', tier: 'obturador', lessonCount: 14, rating: 4.9, category: 'Iluminación de Estudio', price: 349 },
 { id: 'sl-003', title: 'Luz de Borde y Contraluz Dramático', instructor: 'Valentina Cruz', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_18bddf107-1779534745027.png', thumbnailAlt: 'Dramatic back lighting creating rim light silhouette effect on model in studio', duration: '29:30', tier: 'obturador', lessonCount: 10, rating: 4.7, category: 'Iluminación de Estudio', price: 339 },
 { id: 'sl-004', title: 'Flash de Alta Velocidad HSS', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_19c438e56-1772196420060.png', thumbnailAlt: 'High speed sync flash freezing motion of water droplet in professional studio setting', duration: '52:15', tier: 'diafragma', lessonCount: 22, rating: 4.9, category: 'Iluminación de Estudio', price: 449 },
 { id: 'sl-005', title: 'Iluminación para Moda Editorial', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1c7111102-1785194268846.png', thumbnailAlt: 'Fashion editorial lighting setup with multiple strobe heads and colored gels', duration: '1h 10min', tier: 'diafragma', lessonCount: 28, rating: 5.0, category: 'Iluminación de Estudio', price: 499 },
 { id: 'sl-006', title: 'Medición de Luz con Fotómetro', instructor: 'Alejandro Vega', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1fa242636-1772528160793.png', thumbnailAlt: 'Photographer using handheld light meter in studio to measure exposure readings', duration: '22:00', tier: 'apertura', lessonCount: 8, rating: 4.6, category: 'Iluminación de Estudio', price: 319 },
-{ id: 'ed-001', title: 'Flujo de Trabajo RAW en Lightroom', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_10da27dc9-1785808845685.png", thumbnailAlt: 'Lightroom RAW workflow showing catalog organization and basic develop panel', duration: '1h 05min', tier: 'apertura', lessonCount: 20, rating: 4.9, category: 'Edición y Retoque', price: 329 },
-{ id: 'ed-002', title: 'Dodge & Burn Profesional', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1d20aa8e6-1785808846381.png", thumbnailAlt: 'Photoshop dodge and burn technique showing luminosity masking on portrait retouching', duration: '48:20', tier: 'obturador', lessonCount: 14, rating: 4.8, category: 'Edición y Retoque', price: 369 },
-{ id: 'ed-003', title: 'Mascaras de Luminosidad Avanzadas', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1bcbbab71-1785808845874.png", thumbnailAlt: 'Advanced luminosity masking technique in Photoshop for selective color and tone control', duration: '55:00', tier: 'diafragma', lessonCount: 18, rating: 4.9, category: 'Edición y Retoque', price: 429 },
+{ id: 'ed-001', title: 'Flujo de Trabajo RAW en Lightroom', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_10244334a-1787082101641.png", thumbnailAlt: 'Lightroom RAW workflow showing catalog organization and basic develop panel', duration: '1h 05min', tier: 'apertura', lessonCount: 20, rating: 4.9, category: 'Edición y Retoque', price: 329 },
+{ id: 'ed-002', title: 'Dodge & Burn Profesional', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1e40a5b45-1787082100684.png", thumbnailAlt: 'Photoshop dodge and burn technique showing luminosity masking on portrait retouching', duration: '48:20', tier: 'obturador', lessonCount: 14, rating: 4.8, category: 'Edición y Retoque', price: 369 },
+{ id: 'ed-003', title: 'Mascaras de Luminosidad Avanzadas', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1e8b96243-1787082100359.png", thumbnailAlt: 'Advanced luminosity masking technique in Photoshop for selective color and tone control', duration: '55:00', tier: 'diafragma', lessonCount: 18, rating: 4.9, category: 'Edición y Retoque', price: 429 },
 { id: 'ed-004', title: 'Presets de Lightroom desde Cero', instructor: 'Alejandro Vega', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1b566eb3f-1774179779705.png', thumbnailAlt: 'Creating custom Lightroom presets from scratch showing develop module settings', duration: '35:45', tier: 'obturador', lessonCount: 12, rating: 4.7, category: 'Edición y Retoque', price: 349 },
-{ id: 'ed-005', title: 'Eliminación de Fondos con IA', instructor: 'Sofía Reyes', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_19414e49d-1785808845016.png", thumbnailAlt: 'AI-powered background removal tool in Photoshop removing complex hair strands', duration: '28:30', tier: 'apertura', lessonCount: 8, rating: 4.6, category: 'Edición y Retoque', price: 309 },
+{ id: 'ed-005', title: 'Eliminación de Fondos con IA', instructor: 'Sofía Reyes', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1f0c2aa2a-1787082100312.png", thumbnailAlt: 'AI-powered background removal tool in Photoshop removing complex hair strands', duration: '28:30', tier: 'apertura', lessonCount: 8, rating: 4.6, category: 'Edición y Retoque', price: 309 },
 { id: 'pp-001', title: 'Fotografía de Joyería y Relojes', instructor: 'Sofía Reyes', thumbnail: 'https://images.unsplash.com/photo-1642697601641-142b68190a91', thumbnailAlt: 'Macro product photography of luxury watch on reflective black surface', duration: '42:00', tier: 'obturador', lessonCount: 16, rating: 4.9, category: 'Fotografía de Producto', price: 389 },
 { id: 'pp-002', title: 'Gastronomía: Platos Calientes', instructor: 'Sofía Reyes', thumbnail: 'https://images.unsplash.com/photo-1528267696449-7205ebc11414', thumbnailAlt: 'Food photography of steaming hot dishes with dramatic side lighting on dark background', duration: '37:15', tier: 'apertura', lessonCount: 12, rating: 4.8, category: 'Fotografía de Producto', price: 319 },
 { id: 'pp-003', title: 'Flat Lay para E-commerce', instructor: 'Sofía Reyes', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1f7ed4286-1774319801004.png', thumbnailAlt: 'Overhead flat lay arrangement of fashion accessories on white background for e-commerce', duration: '31:00', tier: 'apertura', lessonCount: 10, rating: 4.7, category: 'Fotografía de Producto', price: 329 },
 { id: 'pp-004', title: 'Fotografía de Botellas y Líquidos', instructor: 'Sofía Reyes', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1a124e3ab-1772147627773.png', thumbnailAlt: 'Professional bottle photography with backlit liquid creating translucent amber glow', duration: '55:20', tier: 'diafragma', lessonCount: 20, rating: 4.9, category: 'Fotografía de Producto', price: 459 },
 { id: 'bts-001', title: 'BTS: Sesión Editorial para Vogue MX', instructor: 'Valentina Cruz', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_19b1925a8-1769680916668.png', thumbnailAlt: 'Behind the scenes of high-fashion editorial shoot with full crew and lighting team', duration: '1h 20min', tier: 'obturador', lessonCount: 6, rating: 4.9, category: 'Detrás de Cámaras', price: 379 },
 { id: 'bts-002', title: 'BTS: Campaña de Perfume Luxury', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1aa57d80d-1772990049840.png', thumbnailAlt: 'Behind the scenes production of luxury perfume campaign with multiple light setups', duration: '58:00', tier: 'diafragma', lessonCount: 5, rating: 4.8, category: 'Detrás de Cámaras', price: 449 },
-{ id: 'bts-003', title: 'BTS: Retrato Corporativo para Banco', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_12903cb17-1785808847163.png", thumbnailAlt: 'Behind the scenes of corporate portrait photography for banking client in office setting', duration: '44:30', tier: 'obturador', lessonCount: 4, rating: 4.7, category: 'Detrás de Cámaras', price: 359 }];
+{ id: 'bts-003', title: 'BTS: Retrato Corporativo para Banco', instructor: 'Alejandro Vega', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_15f7f420d-1787082102198.png", thumbnailAlt: 'Behind the scenes of corporate portrait photography for banking client in office setting', duration: '44:30', tier: 'obturador', lessonCount: 4, rating: 4.7, category: 'Detrás de Cámaras', price: 359 }];
 
 
 const CATEGORIES = ['Todos', 'Iluminación de Estudio', 'Edición y Retoque', 'Fotografía de Producto', 'Detrás de Cámaras'];
@@ -62,40 +62,11 @@ interface PurchaseModalProps {
   onPurchased: (courseId: string) => void;
 }
 
-function PurchaseModal({ course, onClose, onPurchased }: PurchaseModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handlePurchase = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Debes iniciar sesión para comprar este curso.');
-        setLoading(false);
-        return;
-      }
-
-      const { error: insertError } = await supabase.
-      from('course_purchases').
-      insert({ user_id: user.id, course_id: course.id, price_paid: course.price });
-
-      if (insertError && insertError.code !== '23505') {
-        setError('Error al procesar la compra. Intenta de nuevo.');
-        setLoading(false);
-        return;
-      }
-
-      onPurchased(course.id);
-      onClose();
-    } catch {
-      setError('Error inesperado. Intenta de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  };
+function PurchaseModal({ course, onClose }: PurchaseModalProps) {
+  // ✅ SECURITY: course_purchases CANNOT be inserted from the browser.
+  // RLS blocks all client-side INSERT on course_purchases.
+  // Real purchases must go through a payment provider webhook (server-side).
+  // This modal is intentionally disabled until payment integration (Phase 9).
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -114,7 +85,6 @@ function PurchaseModal({ course, onClose, onPurchased }: PurchaseModalProps) {
           <button
             onClick={onClose}
             className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors">
-            
             <Icon name="XMarkIcon" size={16} />
           </button>
           {/* Lock icon overlay */}
@@ -155,23 +125,17 @@ function PurchaseModal({ course, onClose, onPurchased }: PurchaseModalProps) {
             <span className="text-2xl font-800 text-foreground">${course.price} <span className="text-sm font-500 text-muted-foreground">USD</span></span>
           </div>
 
-          {error &&
-          <p className="text-xs text-red-400 mb-3 text-center">{error}</p>
-          }
+          {/* Payment not yet available */}
+          <div className="bg-muted/40 border border-border rounded-xl p-4 mb-4 text-center">
+            <Icon name="CreditCardIcon" size={20} className="text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-600 text-foreground mb-1">Pagos próximamente</p>
+            <p className="text-xs text-muted-foreground">La integración de pagos estará disponible pronto.</p>
+          </div>
 
           <button
-            onClick={handlePurchase}
-            disabled={loading}
-            className="btn-primary w-full py-3 text-sm font-700 flex items-center justify-center gap-2 disabled:opacity-60">
-            
-            {loading ?
-            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" /> :
-
-            <>
-                <Icon name="ShoppingCartIcon" size={16} />
-                Comprar Curso — ${course.price} USD
-              </>
-            }
+            onClick={onClose}
+            className="w-full py-3 text-sm font-700 border border-border rounded-xl text-muted-foreground hover:text-foreground transition-colors">
+            Cerrar
           </button>
           <p className="text-xs text-muted-foreground text-center mt-3">Acceso de por vida · Descarga disponible</p>
         </div>
@@ -346,9 +310,9 @@ export default function CoursesScreen() {
       }));
     } catch {
 
+
       // silently fail
-    } finally {setLoadingProgress(false);
-    }
+    } finally {setLoadingProgress(false);}
   }, []);
 
   useEffect(() => {

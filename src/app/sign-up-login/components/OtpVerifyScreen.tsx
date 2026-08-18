@@ -20,7 +20,7 @@ interface OtpVerifyScreenProps {
 export default function OtpVerifyScreen({
   email,
   name,
-  plan = 'obturador',
+  plan: _plan = 'apertura',
   onBack,
   mode = 'signup',
   onRecoverySuccess,
@@ -115,20 +115,10 @@ export default function OtpVerifyScreen({
         return;
       }
 
-      // insert subscription now that OTP is verified and session is fresh
-      try {
-        const userId = refreshData.session.user?.id;
-        if (userId) {
-          const { error: subError } = await supabase
-            .from('subscriptions')
-            .insert({ user_id: userId, tier: plan, status: 'active' });
-          if (subError) {
-            console.error('Subscription insert error:', subError.message);
-          }
-        }
-      } catch {
-        // non-blocking — subscription can be retried later
-      }
+      // ✅ SECURITY: Subscription is created by DB trigger (SECURITY DEFINER).
+      // The client MUST NOT insert into subscriptions — RLS blocks it.
+      // tier='apertura', status='trialing' is set server-side on auth.users INSERT.
+      // Premium subscriptions can only be granted by payment webhooks.
 
       // send welcome email (non-blocking)
       try {

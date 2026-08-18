@@ -59,12 +59,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   /**
    * Email/Password Sign Up
    *
-   * ⚠️  SENSITIVE OPERATION NOTE:
-   * The subscription insert below is a temporary demo pattern.
-   * In production, subscription creation MUST be triggered by a verified
-   * payment webhook (server-side) — never directly from the client.
-   * This code path should be removed once the payment provider is integrated.
+   * Security note: Subscription creation is handled exclusively by a
+   * SECURITY DEFINER database trigger (create_free_subscription_for_new_user).
+   * The trigger creates tier='apertura', status='trialing' — never premium/active.
+   * Premium subscriptions can only be granted by server-side webhooks.
    * See: src/app/api/webhooks/payment/route.ts
+   * See: supabase/migrations/20260818200000_security_hardening_phase1.sql
    */
   const signUp = async (
     email: string,
@@ -84,18 +84,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
     if (error) throw error;
 
-    // ⚠️  DEMO ONLY — subscription insert from client is not production-safe.
-    // In production this must be triggered by payment confirmation webhook.
-    const userId = data.user?.id;
-    const tier = metadata?.plan;
-    if (userId && tier && tier !== 'free') {
-      const { error: subError } = await supabase
-        .from('subscriptions')
-        .insert({ user_id: userId, tier, status: 'active' });
-      if (subError) {
-        console.warn('Subscription insert note:', subError.message);
-      }
-    }
+    // ✅ SECURITY: Subscription is created by DB trigger (server-side SECURITY DEFINER).
+    // The client MUST NOT insert into subscriptions — RLS blocks it.
+    // No client-side subscription insert here.
 
     return { user: data.user, session: data.session };
   };
@@ -133,9 +124,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   /**
    * Get User Profile from Database
-   *
-   * ⚠️  NOTE: This queries 'user_profiles' but the migration creates 'profiles'.
-   * Align table name with migration before using in production.
    */
   const getUserProfile = async (): Promise<Record<string, unknown> | null> => {
     if (!user) return null;
