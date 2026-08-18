@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { TIER_RANK, TIER_LABELS } from '@/lib/config';
 
 const DOWNLOAD_URL_EXPIRY_SECONDS = 300; // 5 minutes — short-lived for security
@@ -91,7 +92,8 @@ export async function getLessonResources(
  *   - An active subscription that meets or exceeds the resource's required tier, OR
  *   - A direct course purchase for the course
  *
- * Also logs the download to the public.downloads table.
+ * Also logs the download to the public.downloads table using the service-role
+ * admin client (regular users no longer have INSERT on downloads — service-role only).
  */
 export async function generateSignedDownloadUrl(
   resourceId: string
@@ -121,7 +123,6 @@ export async function generateSignedDownloadUrl(
     }
 
     // 3. Tier hierarchy — imported from @/lib/config (single source of truth)
-    // const TIER_RANK is no longer defined locally
 
     // 4. Check active subscription
     const { data: subscription } = await supabase
@@ -159,7 +160,7 @@ export async function generateSignedDownloadUrl(
 
     // 7. Generate signed URL from private bucket
     const { data: signedData, error: signError } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from(DOWNLOAD_URL_EXPIRY_SECONDS > 0 ? 'lesson-resources' : 'lesson-resources')
       .createSignedUrl(resource.storage_path, DOWNLOAD_URL_EXPIRY_SECONDS, {
         download: resource.display_name,
       });
@@ -172,8 +173,15 @@ export async function generateSignedDownloadUrl(
       };
     }
 
-    // 8. Log download (non-blocking — fire and forget)
-    supabase
+    // 8. Log download using service-role admin client (non-blocking — fire and forget)
+    // Regular users no longer have INSERT on downloads (Phase 2 hardening).
+    // Download logging is a server-side operation only.
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    supabaseAdmin
       .from('downloads')
       .insert({
         user_id: user.id,

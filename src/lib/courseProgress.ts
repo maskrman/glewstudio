@@ -10,6 +10,12 @@ export interface CourseProgressPayload {
   /** Additional seconds watched in this session */
   additionalSeconds: number;
   totalSeconds?: number;
+  /**
+   * @deprecated Do NOT pass completed=true from the client.
+   * The prevent_self_completion DB trigger will reject it.
+   * Use the saveVideoProgress() server action in src/app/actions/video.ts
+   * which uses the service-role admin client for completion writes.
+   */
   completed?: boolean;
 }
 
@@ -18,6 +24,12 @@ export interface CourseProgressPayload {
  * - Increments watched_seconds by additionalSeconds
  * - Sets completed = true when explicitly passed
  * - Sets completed_at when marking complete for the first time
+ *
+ * ⚠️  SECURITY NOTE (Phase 2):
+ * Passing completed=true from this client-side function will be REJECTED
+ * by the prevent_self_completion database trigger.
+ * Use the saveVideoProgress() server action instead for completion tracking.
+ * This function is safe for progress updates (watched_seconds, total_seconds).
  */
 export async function updateCourseProgress(payload: CourseProgressPayload): Promise<void> {
   const supabase = createClient();
@@ -34,6 +46,17 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
   const alreadyCompleted = existing?.completed ?? false;
   const markComplete = payload.completed === true;
 
+  // Phase 2: Do NOT attempt to set completed=true from client-side.
+  // The prevent_self_completion trigger will reject it.
+  // Use saveVideoProgress() server action for completion writes.
+  if (markComplete && !alreadyCompleted) {
+    console.warn(
+      '[updateCourseProgress] Setting completed=true from client-side is blocked by DB trigger. ' +
+      'Use saveVideoProgress() server action instead.'
+    );
+    // Fall through without setting completed=true — only update progress metrics
+  }
+
   const upsertData: Record<string, unknown> = {
     user_id: payload.userId,
     course_id: payload.courseId,
@@ -44,12 +67,10 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
     watched_seconds: newWatchedSeconds,
     total_seconds: payload.totalSeconds ?? 0,
     updated_at: new Date().toISOString(),
+    // completed is intentionally NOT set here — use saveVideoProgress() server action
   };
 
-  if (markComplete && !alreadyCompleted) {
-    upsertData.completed = true;
-    upsertData.completed_at = new Date().toISOString();
-  } else if (!markComplete && !alreadyCompleted) {
+  if (!alreadyCompleted) {
     upsertData.completed = false;
   }
   // If already completed, don't overwrite completed/completed_at
