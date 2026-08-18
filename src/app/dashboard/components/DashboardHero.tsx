@@ -48,9 +48,9 @@ export default function DashboardHero() {
     } catch {
 
 
+
       // silently fail if not authenticated
-    } finally {setListLoading(false);}
-  };
+    } finally {setListLoading(false);}};
 
   return (
     <section className="relative w-full h-[85vh] min-h-[560px] max-h-[860px] overflow-hidden">

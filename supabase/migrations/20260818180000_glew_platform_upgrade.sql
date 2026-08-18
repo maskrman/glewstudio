@@ -126,6 +126,30 @@ ALTER TABLE public.courses
 ALTER TABLE public.courses
     ADD COLUMN IF NOT EXISTS minimum_tier public.subscription_tier;
 
+-- Ensure all non-typed columns exist (safe for tables created in prior partial runs)
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS slug TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS subtitle TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS instructor_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS instructor_bio TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS instructor_avatar TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS thumbnail TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS thumbnail_alt TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS trailer_url TEXT;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS duration_minutes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS lesson_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '';
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS price NUMERIC(10,2);
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS is_featured BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS rating NUMERIC(3,1);
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS review_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS student_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.courses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
 CREATE INDEX IF NOT EXISTS idx_courses_slug ON public.courses (slug);
 CREATE INDEX IF NOT EXISTS idx_courses_access_type ON public.courses (access_type);
 CREATE INDEX IF NOT EXISTS idx_courses_minimum_tier ON public.courses (minimum_tier);
