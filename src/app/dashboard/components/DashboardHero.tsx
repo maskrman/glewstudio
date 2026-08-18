@@ -51,18 +51,18 @@ export default function DashboardHero() {
 
 
 
+
       // silently fail if not authenticated
-    } finally {setListLoading(false);}};return (
-    <section className="relative w-full h-[85vh] min-h-[560px] max-h-[860px] overflow-hidden">
+    } finally {setListLoading(false);}};return <section className="relative w-full h-[85vh] min-h-[560px] max-h-[860px] overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <AppImage
-          src="https://img.rocket.new/generatedImages/rocket_gen_img_19e5903ef-1783560999543.png"
-          alt="Dramatic studio photography session with professional lighting rigs and a model in elegant pose"
-          fill
-          priority
-          className="object-cover object-center"
-          sizes="100vw" />
+        src="https://img.rocket.new/generatedImages/rocket_gen_img_19e5903ef-1783560999543.png"
+        alt="Dramatic studio photography session with professional lighting rigs and a model in elegant pose"
+        fill
+        priority
+        className="object-cover object-center"
+        sizes="100vw" />
         
         <div className="gradient-dark-overlay absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
@@ -98,30 +98,30 @@ export default function DashboardHero() {
 
           <div className="flex items-center gap-3 flex-wrap">
             <Link
-              href="/video-player"
-              className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm font-700">
+            href="/video-player"
+            className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm font-700">
               <Icon name="PlayIcon" size={18} />
               Ver Ahora
             </Link>
             <button
-              onClick={handleListToggle}
-              disabled={listLoading}
-              className={`btn-ghost inline-flex items-center gap-2 px-5 py-3 text-sm font-600 ${
-              inList ? 'border-primary/50 text-primary' : ''}`
-              }>
+            onClick={handleListToggle}
+            disabled={listLoading}
+            className={`btn-ghost inline-flex items-center gap-2 px-5 py-3 text-sm font-600 ${
+            inList ? 'border-primary/50 text-primary' : ''}`
+            }>
               
               {listLoading ?
-              <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" /> :
-              inList ?
-              <Icon name="CheckIcon" size={18} className="text-primary" /> :
+            <div className="w-4 h-4 border border-current border-t-transparent rounded-full animate-spin" /> :
+            inList ?
+            <Icon name="CheckIcon" size={18} className="text-primary" /> :
 
-              <Icon name="PlusIcon" size={18} />
-              }
+            <Icon name="PlusIcon" size={18} />
+            }
               {inList ? 'En Mi Lista' : 'Añadir a Mi Lista'}
             </button>
             <Link
-              href="/course-detail"
-              className="btn-ghost inline-flex items-center gap-2 px-5 py-3 text-sm font-600">
+            href="/course-detail"
+            className="btn-ghost inline-flex items-center gap-2 px-5 py-3 text-sm font-600">
               <Icon name="InformationCircleIcon" size={18} />
               Más Info
             </Link>
@@ -131,11 +131,11 @@ export default function DashboardHero() {
 
       {/* Mute toggle */}
       <button
-        onClick={() => setMuted(!muted)}
-        className="absolute bottom-16 right-8 z-10 w-10 h-10 rounded-full border border-border bg-black/40 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={muted ? 'Activar sonido' : 'Silenciar'}>
+      onClick={() => setMuted(!muted)}
+      className="absolute bottom-16 right-8 z-10 w-10 h-10 rounded-full border border-border bg-black/40 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+      aria-label={muted ? 'Activar sonido' : 'Silenciar'}>
         <Icon name={muted ? 'SpeakerXMarkIcon' : 'SpeakerWaveIcon'} size={18} />
       </button>
-    </section>);
+    </section>;
 
 }

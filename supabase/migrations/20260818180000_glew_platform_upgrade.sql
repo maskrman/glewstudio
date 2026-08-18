@@ -225,6 +225,19 @@ CREATE TABLE IF NOT EXISTS public.course_purchases (
 -- Ensure all non-typed columns exist (safe for tables created in prior partial runs)
 ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS course_id UUID REFERENCES public.courses(id) ON DELETE RESTRICT;
+-- Ensure course_id is UUID type (may have been created as TEXT in a prior partial run)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'course_purchases'
+          AND column_name = 'course_id'
+          AND data_type = 'text'
+    ) THEN
+        ALTER TABLE public.course_purchases ALTER COLUMN course_id TYPE UUID USING course_id::UUID;
+    END IF;
+END $$;
 ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2);
 ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'USD';
 ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'demo';
@@ -322,7 +335,7 @@ AS $func$
 SELECT EXISTS (
     SELECT 1 FROM public.course_purchases
     WHERE user_id = p_user_id
-      AND course_id = p_course_id
+      AND course_id::UUID = p_course_id
       AND purchase_status = 'paid'::public.purchase_status
 )
 $func$;
