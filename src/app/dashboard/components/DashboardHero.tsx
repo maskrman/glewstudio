@@ -47,17 +47,17 @@ export default function DashboardHero() {
 
 
 
+
       // silently fail if not authenticated
     } finally {setListLoading(false);}};return <section className="relative w-full h-[85vh] min-h-[560px] max-h-[860px] overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
-        <AppImage
-        src="https://img.rocket.new/generatedImages/rocket_gen_img_19e5903ef-1783560999543.png"
-        alt="Dramatic studio photography session with professional lighting rigs and a model in elegant pose"
-        fill
-        priority
-        className="object-cover object-center"
-        sizes="100vw" />
+        <AppImage src="https://img.rocket.new/generatedImages/rocket_gen_img_19e5903ef-1783560999543.png"
+      alt="Dramatic studio photography session with professional lighting rigs and a model in elegant pose"
+      fill
+      priority
+      className="object-cover object-center"
+      sizes="100vw" />
         
         <div className="gradient-dark-overlay absolute inset-0" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />

@@ -54,13 +54,7 @@ BEGIN
             ON public.processed_webhook_events
             FOR SELECT
             TO authenticated
-            USING (
-                EXISTS (
-                    SELECT 1 FROM public.profiles
-                    WHERE profiles.id = auth.uid()
-                      AND profiles.is_admin = true
-                )
-            );
+            USING (public.is_admin());
     END IF;
 END $$;
 

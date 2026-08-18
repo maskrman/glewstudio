@@ -40,11 +40,11 @@ const curriculum = [
 
 
 const reviews = [
-{ id: 'rev-001', name: 'Mariana López', avatar: "https://images.unsplash.com/photo-1610533384348-bb69420eb838", avatarAlt: 'Young woman reviewer portrait', rating: 5, date: '15 jul 2026', text: 'El mejor curso de iluminación que he tomado. Carlos explica cada concepto con claridad y los archivos RAW de práctica son invaluables.' },
-{ id: 'rev-002', name: 'Pedro Arroyo', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_15ebdb31b-1763300068284.png", avatarAlt: 'Male reviewer headshot portrait', rating: 5, date: '10 jul 2026', text: 'Increíble calidad de producción. Los esquemas de iluminación en PDF son perfectos para tener siempre a la mano en el estudio.' },
-{ id: 'rev-003', name: 'Camila Torres', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_12dd44f7c-1773180972679.png", avatarAlt: 'Young woman reviewer with long dark hair', rating: 4, date: '02 jul 2026', text: 'Muy buen contenido. Me hubiera gustado más variantes de Rembrandt para diferentes tipos de rostro, pero lo básico está muy bien cubierto.' },
+{ id: 'rev-001', name: 'Mariana López', avatar: "https://images.unsplash.com/photo-1729349187307-86e235d764b5", avatarAlt: 'Young woman reviewer portrait', rating: 5, date: '15 jul 2026', text: 'El mejor curso de iluminación que he tomado. Carlos explica cada concepto con claridad y los archivos RAW de práctica son invaluables.' },
+{ id: 'rev-002', name: 'Pedro Arroyo', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_1ebb03a41-1763292034510.png", avatarAlt: 'Male reviewer headshot portrait', rating: 5, date: '10 jul 2026', text: 'Increíble calidad de producción. Los esquemas de iluminación en PDF son perfectos para tener siempre a la mano en el estudio.' },
+{ id: 'rev-003', name: 'Camila Torres', avatar: "https://images.unsplash.com/photo-1647318062831-37e0e828fedc", avatarAlt: 'Young woman reviewer with long dark hair', rating: 4, date: '02 jul 2026', text: 'Muy buen contenido. Me hubiera gustado más variantes de Rembrandt para diferentes tipos de rostro, pero lo básico está muy bien cubierto.' },
 { id: 'rev-004', name: 'Andrés Solís', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_15ebdb31b-1763300068284.png", avatarAlt: 'Male reviewer with glasses professional headshot', rating: 5, date: '28 jun 2026', text: 'Llevo 3 años haciendo fotografía de retrato y este curso me enseñó cosas que no sabía. La sesión práctica del módulo 4 es oro puro.' },
-{ id: 'rev-005', name: 'Valeria Ríos', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_1353f12ca-1772136692049.png", avatarAlt: 'Female reviewer with straight hair smiling', rating: 5, date: '20 jun 2026', text: 'Compré el Plan Obturador solo por este curso y valió completamente la pena. Los LUTs incluidos ya los estoy usando en mis trabajos.' }];
+{ id: 'rev-005', name: 'Valeria Ríos', avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_1de44833e-1787083077558.png", avatarAlt: 'Female reviewer with straight hair smiling', rating: 5, date: '20 jun 2026', text: 'Compré el Plan Obturador solo por este curso y valió completamente la pena. Los LUTs incluidos ya los estoy usando en mis trabajos.' }];
 
 
 export default function CourseDetailBody() {
@@ -243,7 +243,7 @@ export default function CourseDetailBody() {
               <div className="flex items-start gap-5 mb-6">
                 <div className="relative w-20 h-20 rounded-full overflow-hidden shrink-0">
                   <AppImage
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_151c008d8-1763296088919.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_14144d2bd-1763299638094.png"
                   alt="Carlos Mendoza professional photography instructor headshot"
                   fill
                   className="object-cover"
