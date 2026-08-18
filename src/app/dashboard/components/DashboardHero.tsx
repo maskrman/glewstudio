@@ -49,9 +49,9 @@ export default function DashboardHero() {
 
 
 
+
       // silently fail if not authenticated
     } finally {setListLoading(false);}};
-
   return (
     <section className="relative w-full h-[85vh] min-h-[560px] max-h-[860px] overflow-hidden">
       {/* Background */}

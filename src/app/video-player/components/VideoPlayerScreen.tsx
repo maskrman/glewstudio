@@ -278,15 +278,15 @@ export default function VideoPlayerScreen() {
 
 
 
+
       // silently fail — don't interrupt the user experience
-    }}, [user]);const handleVideoEnd = useCallback(async () => {
-    if (progressFiredRef.current) return;
-    progressFiredRef.current = true;
-    setPlaying(false);
-    setLessonCompleted(true);
-    await fireProgressUpdate(false);
-    toast.success('¡Lección completada! Tu progreso ha sido guardado.');
-  }, [fireProgressUpdate]);
+    }}, [user]);const handleVideoEnd = useCallback(async () => {if (progressFiredRef.current) return;
+      progressFiredRef.current = true;
+      setPlaying(false);
+      setLessonCompleted(true);
+      await fireProgressUpdate(false);
+      toast.success('¡Lección completada! Tu progreso ha sido guardado.');
+    }, [fireProgressUpdate]);
 
   const handleMarkLessonComplete = async () => {
     if (lessonCompleted || markingComplete || !user) return;
@@ -348,7 +348,7 @@ export default function VideoPlayerScreen() {
           {/* Player */}
           <div className="relative bg-black w-full" style={{ aspectRatio: '16/9' }}>
             <AppImage
-              src="https://img.rocket.new/generatedImages/rocket_gen_img_1cb16a1d8-1785194269805.png"
+              src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
               alt="Studio photography lesson showing Rembrandt lighting technique with professional strobe setup"
               fill
               priority

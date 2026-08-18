@@ -48,6 +48,22 @@ BEGIN
     ) THEN
         ALTER TABLE public.payment_events DROP COLUMN event_type;
     END IF;
+
+    -- Drop status column from subscriptions before dropping subscription_status type
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'subscriptions' AND column_name = 'status'
+    ) THEN
+        ALTER TABLE public.subscriptions DROP COLUMN status;
+    END IF;
+
+    -- Drop tier column from subscriptions before dropping subscription_tier type
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'subscriptions' AND column_name = 'tier'
+    ) THEN
+        ALTER TABLE public.subscriptions DROP COLUMN tier;
+    END IF;
 END $$;
 
 -- Now safely drop and recreate types
@@ -172,22 +188,18 @@ ALTER TABLE public.subscriptions
     ADD COLUMN IF NOT EXISTS provider_subscription_id TEXT,
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 
--- Update status column to use new enum (requires recreating with new type)
--- Since we dropped and recreated the type, we need to update the column
+-- Re-add status and tier columns with new enum types (columns were dropped above via CASCADE)
 ALTER TABLE public.subscriptions
-    ALTER COLUMN status TYPE public.subscription_status
-    USING CASE
-        WHEN status::TEXT = 'active' THEN 'active'::public.subscription_status
-        WHEN status::TEXT = 'cancelled' THEN 'cancelled'::public.subscription_status
-        WHEN status::TEXT = 'expired' THEN 'expired'::public.subscription_status
-        WHEN status::TEXT = 'trial' THEN 'trialing'::public.subscription_status
-        ELSE 'active'::public.subscription_status
-    END;
+    ADD COLUMN IF NOT EXISTS status public.subscription_status NOT NULL DEFAULT 'active'::public.subscription_status;
 
--- Update tier column to use new enum
 ALTER TABLE public.subscriptions
-    ALTER COLUMN tier TYPE public.subscription_tier
-    USING tier::TEXT::public.subscription_tier;
+    ADD COLUMN IF NOT EXISTS tier public.subscription_tier NOT NULL DEFAULT 'apertura'::public.subscription_tier;
+
+-- Recreate unique index on status (was dropped when status column was dropped via CASCADE)
+DROP INDEX IF EXISTS public.idx_subscriptions_user_active;
+CREATE UNIQUE INDEX idx_subscriptions_user_active
+    ON public.subscriptions (user_id)
+    WHERE status = 'active';
 
 -- ============================================================
 -- 5. COURSE PURCHASES TABLE
