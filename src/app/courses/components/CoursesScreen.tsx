@@ -26,7 +26,28 @@ interface CourseWithProgress {
   purchased?: boolean;
 }
 
-// All available courses
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚠️  PROVISIONAL DATA SOURCE — NOT AUTHORITATIVE
+//
+// ALL_COURSES is a static, hardcoded list used exclusively for UI rendering
+// (displaying the course catalog, filtering, sorting).
+//
+// THIS ARRAY MUST NOT BE USED AS AUTHORITY FOR:
+//   - Authorization decisions (who can access a course)
+//   - Real pricing (prices here are display-only estimates)
+//   - Permission checks (tier requirements)
+//   - Membership entitlements
+//   - Purchase validation
+//
+// The authoritative source for all of the above is the DATABASE:
+//   - Table: public.courses          → real course metadata, tier requirements
+//   - Table: public.course_purchases → paid purchases (purchase_status = 'paid')
+//   - Table: public.subscriptions    → active memberships (status = 'active')
+//
+// Migration to DB-driven catalog is planned for a future phase.
+// Until then, ALL authorization and access control is enforced server-side
+// via RLS policies and the /api/video-token endpoint — never via this array.
+// ─────────────────────────────────────────────────────────────────────────────
 const ALL_COURSES: CourseWithProgress[] = [
 { id: 'cw-001', title: 'Iluminación Rembrandt para Retrato', instructor: 'Carlos Mendoza', thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1d731ee8d-1779952599495.png', thumbnailAlt: 'Studio lighting setup with Rembrandt pattern creating dramatic shadows on portrait subject', duration: '14:32', tier: 'obturador', lessonCount: 12, rating: 4.9, category: 'Iluminación de Estudio', price: 349 },
 { id: 'cw-002', title: 'Retoque de Piel en Photoshop CC', instructor: 'Sofía Reyes', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1aa26c31d-1785844143724.png", thumbnailAlt: 'Professional photo retouching workflow showing skin smoothing techniques in Photoshop', duration: '22:15', tier: 'apertura', lessonCount: 8, rating: 4.8, category: 'Edición y Retoque', price: 319 },

@@ -364,6 +364,33 @@ export interface Database {
         }
         Update: Record<string, never>
       }
+      /**
+       * Idempotency log for payment webhook events.
+       * Written exclusively by the server-side webhook handler (service-role).
+       * Prevents duplicate subscription activations from replayed webhooks.
+       * Migration: 20260818210000_webhook_idempotency.sql
+       */
+      processed_webhook_events: {
+        Row: {
+          id: string
+          provider_event_id: string
+          event_type: string
+          user_id: string | null
+          processed_at: string
+          metadata: Record<string, unknown> | null
+        }
+        Insert: {
+          id?: string
+          provider_event_id: string
+          event_type: string
+          user_id?: string | null
+          processed_at?: string
+          metadata?: Record<string, unknown> | null
+        }
+        Update: {
+          metadata?: Record<string, unknown> | null
+        }
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
