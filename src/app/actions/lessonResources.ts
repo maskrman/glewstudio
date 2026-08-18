@@ -88,12 +88,17 @@ export async function getLessonResources(
  * Server Action: generateSignedDownloadUrl
  *
  * Generates a short-lived (5-minute) signed URL for a lesson resource file.
- * Access is granted only when the authenticated user has:
- *   - An active subscription that meets or exceeds the resource's required tier, OR
- *   - A direct course purchase for the course
  *
- * Also logs the download to the public.downloads table using the service-role
- * admin client (regular users no longer have INSERT on downloads — service-role only).
+ * SECURITY FIX (Audit Phase 2, Issue #5):
+ *   Access requires EITHER:
+ *   A. Active subscription with tier >= resource.required_tier
+ *      (status = active AND tier rank >= required tier rank)
+ *   B. Paid course purchase:
+ *      user_id = auth.uid() AND course_id = resource.course_id AND purchase_status = 'paid'
+ *      (NOT just any purchase row — must be explicitly paid)
+ *
+ *   Previously: course_purchase check did not verify purchase_status = 'paid'.
+ *   A pending or refunded purchase would have granted access.
  */
 export async function generateSignedDownloadUrl(
   resourceId: string
@@ -101,7 +106,7 @@ export async function generateSignedDownloadUrl(
   try {
     const supabase = await createClient();
 
-    // 1. Verify authentication
+    // 1. Verify authentication — user_id always from server-side session
     const {
       data: { user },
       error: authError,
@@ -122,9 +127,7 @@ export async function generateSignedDownloadUrl(
       return { url: null, error: 'Recurso no encontrado.' };
     }
 
-    // 3. Tier hierarchy — imported from @/lib/config (single source of truth)
-
-    // 4. Check active subscription
+    // 3. Check active subscription with sufficient tier
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('tier, status')
@@ -132,23 +135,24 @@ export async function generateSignedDownloadUrl(
       .eq('status', 'active')
       .maybeSingle();
 
-    // 5. Check course purchase (fallback)
-    let hasPurchase = false;
-    if (!subscription) {
-      const { data: purchase } = await supabase
-        .from('course_purchases')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', resource.course_id)
-        .maybeSingle();
-      hasPurchase = !!purchase;
-    }
+    // 4. Check paid course purchase (explicit: user_id + course_id + purchase_status = 'paid')
+    // SECURITY: Must verify purchase_status = 'paid' explicitly.
+    // pending, failed, refunded, chargeback do NOT grant access.
+    const { data: paidPurchase } = await supabase
+      .from('course_purchases')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', resource.course_id)
+      .eq('purchase_status', 'paid')
+      .maybeSingle();
 
-    // 6. Evaluate access
+    const hasPaidPurchase = !!paidPurchase;
+
+    // 5. Evaluate access
     const userTierRank = subscription ? (TIER_RANK[subscription.tier] ?? 0) : 0;
     const requiredTierRank = TIER_RANK[resource.required_tier] ?? 1;
-    const hasSubscriptionAccess = subscription && userTierRank >= requiredTierRank;
-    const hasAccess = hasSubscriptionAccess || hasPurchase;
+    const hasSubscriptionAccess = !!subscription && userTierRank >= requiredTierRank;
+    const hasAccess = hasSubscriptionAccess || hasPaidPurchase;
 
     if (!hasAccess) {
       const requiredLabel = TIER_LABELS[resource.required_tier] ?? resource.required_tier;
@@ -158,9 +162,9 @@ export async function generateSignedDownloadUrl(
       };
     }
 
-    // 7. Generate signed URL from private bucket
+    // 6. Generate signed URL from private bucket
     const { data: signedData, error: signError } = await supabase.storage
-      .from(DOWNLOAD_URL_EXPIRY_SECONDS > 0 ? 'lesson-resources' : 'lesson-resources')
+      .from(BUCKET_NAME)
       .createSignedUrl(resource.storage_path, DOWNLOAD_URL_EXPIRY_SECONDS, {
         download: resource.display_name,
       });
@@ -173,9 +177,8 @@ export async function generateSignedDownloadUrl(
       };
     }
 
-    // 8. Log download using service-role admin client (non-blocking — fire and forget)
+    // 7. Log download using service-role admin client (non-blocking — fire and forget)
     // Regular users no longer have INSERT on downloads (Phase 2 hardening).
-    // Download logging is a server-side operation only.
     const supabaseAdmin = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!

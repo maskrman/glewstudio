@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { SubscriptionTier } from '@/lib/config';
+import {
+  hasAccess,
+  TIER_LABELS,
+  TIER_RANK,
+  type SubscriptionTier,
+} from '@/lib/config';
 
-// Re-export for consumers that import from this hook
+// Re-export real implementations from lib/config (single source of truth)
+export { hasAccess, TIER_LABELS, TIER_RANK };
 export type { SubscriptionTier };
 
 export interface UserPlan {
@@ -75,17 +81,6 @@ export function useUserPlan(): UserPlan {
 
   return { tier, status, expiresAt, isActive, isLoading, error };
 }
-
-function hasAccess(...args: any[]): any {
-  // eslint-disable-next-line no-console
-  console.warn('Placeholder: hasAccess is not implemented yet.', args);
-  return null;
-}
-
-export { hasAccess };
-const TIER_LABELS: any = null;
-
-export { TIER_LABELS };
 const TIER_PRICES: any = null;
 
 export { TIER_PRICES };

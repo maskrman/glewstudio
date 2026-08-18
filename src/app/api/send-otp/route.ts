@@ -1,26 +1,53 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Restrict CORS to legitimate application domains only
+const ALLOWED_ORIGINS = [
+  'https://glewstudio5224.builtwithrocket.new',
+  'https://glewstudio7616.builtwithrocket.new',
+  process.env.NEXT_PUBLIC_SITE_URL,
+].filter(Boolean) as string[];
 
-export async function OPTIONS() {
-  return new NextResponse('ok', { headers: corsHeaders });
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
+
+// OTP brute-force protection constants
+const MAX_RESEND_PER_WINDOW = 3;       // Max resend requests per email per window
+const RESEND_WINDOW_MINUTES = 15;      // Window duration in minutes
+const RESEND_COOLDOWN_SECONDS = 60;    // Min seconds between resend requests
+
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  return new NextResponse('ok', { headers: getCorsHeaders(origin) });
 }
 
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   try {
     const { email, name, type = 'signup' } = await req.json();
 
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Email is required' }, { status: 400, headers: corsHeaders });
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400, headers: corsHeaders });
     }
 
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     if (!RESEND_API_KEY || RESEND_API_KEY === 'your-resend-api-key-here') {
-      return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500, headers: corsHeaders });
     }
 
     const supabaseAdmin = createClient(
@@ -29,8 +56,44 @@ export async function POST(req: NextRequest) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Generate a secure random 6-digit OTP
-    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    // ── Anti-spam / resend rate limiting ──────────────────────────────────────
+    // Count recent OTP requests for this email+type within the window
+    const windowStart = new Date(Date.now() - RESEND_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const { data: recentOtps, error: countError } = await supabaseAdmin
+      .from('otp_codes')
+      .select('id, last_resend_at, resend_count, created_at')
+      .eq('email', email)
+      .eq('type', type)
+      .gte('created_at', windowStart)
+      .order('created_at', { ascending: false });
+
+    if (!countError && recentOtps && recentOtps.length >= MAX_RESEND_PER_WINDOW) {
+      return NextResponse.json(
+        { error: `Demasiadas solicitudes. Espera ${RESEND_WINDOW_MINUTES} minutos antes de solicitar otro código.` },
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
+    // Enforce cooldown between resend requests
+    if (!countError && recentOtps && recentOtps.length > 0) {
+      const lastOtp = recentOtps[0];
+      const lastResendAt = lastOtp.last_resend_at ?? lastOtp.created_at;
+      if (lastResendAt) {
+        const secondsSinceLast = (Date.now() - new Date(lastResendAt).getTime()) / 1000;
+        if (secondsSinceLast < RESEND_COOLDOWN_SECONDS) {
+          const waitSeconds = Math.ceil(RESEND_COOLDOWN_SECONDS - secondsSinceLast);
+          return NextResponse.json(
+            { error: `Espera ${waitSeconds} segundos antes de solicitar otro código.` },
+            { status: 429, headers: corsHeaders }
+          );
+        }
+      }
+    }
+
+    // ── Generate cryptographically secure OTP ─────────────────────────────────
+    // Use crypto.getRandomValues() instead of Math.random()
+    // crypto is available in Next.js API routes (Node.js 19+ / Web Crypto API)
+    const otpCode = generateSecureOtp();
 
     // Delete any existing unused OTPs for this email+type to avoid confusion
     await supabaseAdmin
@@ -49,11 +112,14 @@ export async function POST(req: NextRequest) {
         type,
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         used: false,
+        attempt_count: 0,
+        resend_count: recentOtps ? recentOtps.length : 0,
+        last_resend_at: new Date().toISOString(),
       });
 
     if (insertError) {
       console.error('OTP insert error:', insertError.message);
-      return NextResponse.json({ error: 'No se pudo generar el código OTP' }, { status: 500 });
+      return NextResponse.json({ error: 'No se pudo generar el código OTP' }, { status: 500, headers: corsHeaders });
     }
 
     // Send the OTP email via Resend
@@ -63,7 +129,7 @@ export async function POST(req: NextRequest) {
         : `${otpCode} es tu código de verificación - GlewStudio`;
 
     const htmlContent =
-      type === 'recovery' ? getRecoveryTemplate(name ||'', otpCode)
+      type === 'recovery' ? getRecoveryTemplate(name || '', otpCode)
         : getOtpTemplate(name || '', otpCode);
 
     const resendRes = await fetch('https://api.resend.com/emails', {
@@ -86,7 +152,7 @@ export async function POST(req: NextRequest) {
       console.error('Resend error:', resendData);
       return NextResponse.json(
         { error: resendData?.message || 'Failed to send email' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -98,6 +164,25 @@ export async function POST(req: NextRequest) {
       { status: 500, headers: corsHeaders }
     );
   }
+}
+
+/**
+ * Generate a cryptographically secure 6-digit OTP.
+ * Uses crypto.getRandomValues() — NOT Math.random().
+ *
+ * Math.random() is NOT cryptographically secure and can be predicted.
+ * crypto.getRandomValues() uses the OS CSPRNG.
+ */
+function generateSecureOtp(): string {
+  // Generate a random number in range [100000, 999999]
+  // Use rejection sampling to avoid modulo bias
+  const array = new Uint32Array(1);
+  let value: number;
+  do {
+    crypto.getRandomValues(array);
+    value = array[0] % 1000000;
+  } while (value < 100000);
+  return String(value);
 }
 
 // ─── OTP Verification Template ────────────────────────────────────────────────

@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 
+// Maximum reasonable values for progress validation
+const MAX_ADDITIONAL_SECONDS = 7200; // 2 hours per session
+const MAX_TOTAL_SECONDS = 86400;     // 24 hours total course duration
+
 export interface CourseProgressPayload {
   userId: string;
   courseId: string;
@@ -7,7 +11,11 @@ export interface CourseProgressPayload {
   courseInstructor: string;
   courseThumbnail?: string;
   courseThumbnailAlt?: string;
-  /** Additional seconds watched in this session */
+  /**
+   * Additional seconds watched in this session.
+   * Must be >= 0 and <= 7200 (2 hours per session).
+   * Values outside this range are rejected.
+   */
   additionalSeconds: number;
   totalSeconds?: number;
   /**
@@ -22,16 +30,40 @@ export interface CourseProgressPayload {
 /**
  * Upserts a course_progress row for the given user+course.
  * - Increments watched_seconds by additionalSeconds
- * - Sets completed = true when explicitly passed
- * - Sets completed_at when marking complete for the first time
+ * - user_id is taken from payload.userId but the server-side action
+ *   always overrides with the session user
  *
- * ⚠️  SECURITY NOTE (Phase 2):
- * Passing completed=true from this client-side function will be REJECTED
- * by the prevent_self_completion database trigger.
- * Use the saveVideoProgress() server action instead for completion tracking.
- * This function is safe for progress updates (watched_seconds, total_seconds).
+ * SECURITY NOTE (Phase 2 Audit Corrections):
+ * - additionalSeconds is validated: must be >= 0 and <= MAX_ADDITIONAL_SECONDS
+ * - totalSeconds is validated: must be >= 0 and <= MAX_TOTAL_SECONDS
+ * - Passing completed=true from this client-side function will be REJECTED
+ *   by the prevent_self_completion database trigger.
+ * - Use the saveVideoProgress() server action instead for completion tracking.
+ * - This function is safe for progress updates (watched_seconds, total_seconds).
  */
 export async function updateCourseProgress(payload: CourseProgressPayload): Promise<void> {
+  // Validate additionalSeconds
+  const additionalSeconds = Math.floor(Number(payload.additionalSeconds));
+  if (!Number.isFinite(additionalSeconds) || additionalSeconds < 0) {
+    console.warn('[updateCourseProgress] Invalid additionalSeconds — must be >= 0. Skipping.');
+    return;
+  }
+  if (additionalSeconds > MAX_ADDITIONAL_SECONDS) {
+    console.warn(
+      `[updateCourseProgress] additionalSeconds (${additionalSeconds}) exceeds max (${MAX_ADDITIONAL_SECONDS}). Clamping.`
+    );
+  }
+  const clampedAdditional = Math.min(additionalSeconds, MAX_ADDITIONAL_SECONDS);
+
+  // Validate totalSeconds
+  const totalSeconds = payload.totalSeconds !== undefined
+    ? Math.floor(Number(payload.totalSeconds))
+    : 0;
+  const clampedTotal = Math.max(0, Math.min(
+    Number.isFinite(totalSeconds) ? totalSeconds : 0,
+    MAX_TOTAL_SECONDS
+  ));
+
   const supabase = createClient();
 
   // Fetch existing row first so we can increment watched_seconds correctly
@@ -42,7 +74,8 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
     .eq('course_id', payload.courseId)
     .maybeSingle();
 
-  const newWatchedSeconds = (existing?.watched_seconds ?? 0) + payload.additionalSeconds;
+  const currentWatched = existing?.watched_seconds ?? 0;
+  const newWatchedSeconds = Math.min(currentWatched + clampedAdditional, MAX_TOTAL_SECONDS);
   const alreadyCompleted = existing?.completed ?? false;
   const markComplete = payload.completed === true;
 
@@ -65,7 +98,7 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
     course_thumbnail: payload.courseThumbnail ?? '',
     course_thumbnail_alt: payload.courseThumbnailAlt ?? '',
     watched_seconds: newWatchedSeconds,
-    total_seconds: payload.totalSeconds ?? 0,
+    total_seconds: clampedTotal,
     updated_at: new Date().toISOString(),
     // completed is intentionally NOT set here — use saveVideoProgress() server action
   };
