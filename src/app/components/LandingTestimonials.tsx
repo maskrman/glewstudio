@@ -19,7 +19,7 @@ const testimonials = [
   id: 'test-002',
   name: 'Ricardo Fuentes',
   role: 'Fotógrafo Comercial, Monterrey',
-  avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_179ebd6f2-1763294255544.png",
+  avatar: "https://img.rocket.new/generatedImages/rocket_gen_img_15ebdb31b-1763300068284.png",
   avatarAlt: 'Middle-aged man with short dark hair in professional headshot',
   rating: 5,
   text: 'Los archivos RAW de práctica son oro puro. Poder editar el mismo material que el instructor hace que el aprendizaje sea real y aplicable de inmediato.',

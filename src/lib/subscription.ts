@@ -1,31 +1,36 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import {
+  type SubscriptionTier,
+  TIER_RANK,
+  MEMBERSHIP_DISCOUNTS,
+  MEMBERSHIP_PRICES,
+  calculateCoursePrice,
+  hasAccess,
+  tierRank,
+  TIER_LABELS,
+  TIER_SHORT_LABELS,
+} from '@/lib/config';
 
-export type SubscriptionTier = 'apertura' | 'obturador' | 'diafragma' | null;
-
-const TIER_RANK: Record<string, number> = {
-  apertura: 1,
-  obturador: 2,
-  diafragma: 3,
+export type { SubscriptionTier };
+export {
+  TIER_RANK,
+  MEMBERSHIP_DISCOUNTS,
+  MEMBERSHIP_PRICES,
+  calculateCoursePrice,
+  hasAccess,
+  tierRank,
+  TIER_LABELS,
+  TIER_SHORT_LABELS,
 };
 
-/**
- * Returns the numeric rank of a tier (higher = more access).
- * null / unknown → 0 (no subscription)
- */
-export function tierRank(tier: SubscriptionTier): number {
-  if (!tier) return 0;
-  return TIER_RANK[tier] ?? 0;
-}
-
-/**
- * Returns true if the user's tier meets or exceeds the required tier.
- */
-export function hasAccess(userTier: SubscriptionTier, requiredTier: SubscriptionTier): boolean {
-  if (!requiredTier) return true; // no requirement → always accessible
-  return tierRank(userTier) >= tierRank(requiredTier);
-}
+// Backward compat alias
+export const TIER_PRICES: Record<string, string> = {
+  apertura: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`,
+  obturador: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`,
+  diafragma: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`,
+};
 
 /**
  * Fetches the active subscription tier for the currently authenticated user.
@@ -59,14 +64,24 @@ export async function getUserSubscriptionTier(): Promise<SubscriptionTier> {
   }
 }
 
-export const TIER_LABELS: Record<string, string> = {
-  apertura: 'Plan Apertura',
-  obturador: 'Plan Obturador',
-  diafragma: 'Plan Diafragma',
-};
+/**
+ * Check if the current user has purchased a specific course.
+ */
+export async function checkCoursePurchase(courseId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
 
-export const TIER_PRICES: Record<string, string> = {
-  apertura: '$19/mes',
-  obturador: '$49/mes',
-  diafragma: '$99/mes',
-};
+  try {
+    const { data } = await supabase
+      .from('course_purchases')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('course_id', courseId)
+      .eq('purchase_status', 'paid')
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}

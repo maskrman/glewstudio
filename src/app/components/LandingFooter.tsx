@@ -4,7 +4,7 @@ import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 
 const footerLinks = {
-  Plataforma: ['Cursos', 'Instructores', 'Planes'],
+  Plataforma: ['Cursos', 'Instructores', 'Planes', 'En Vivo'],
   Soporte: ['Centro de Ayuda', 'Contacto', 'Estado del Servicio'],
   Legal: ['Términos de Uso', 'Privacidad', 'Cookies'],
 };

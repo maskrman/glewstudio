@@ -15,8 +15,6 @@ export default function LandingTopbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = ['Cursos', 'Instructores', 'Planes'];
-
   return (
     <>
       <header
@@ -33,7 +31,7 @@ export default function LandingTopbar() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            {navItems?.map((item) => (
+            {['Cursos', 'En Vivo', 'Instructores', 'Planes']?.map((item) => (
               <a
                 key={`landing-nav-${item}`}
                 href={`#${item?.toLowerCase()}`}
@@ -81,7 +79,7 @@ export default function LandingTopbar() {
               </button>
             </div>
             <nav className="flex flex-col gap-1 p-4">
-              {navItems?.map((item) => (
+              {['Cursos', 'En Vivo', 'Instructores', 'Planes']?.map((item) => (
                 <a
                   key={`mobile-landing-${item}`}
                   href={`#${item?.toLowerCase()}`}

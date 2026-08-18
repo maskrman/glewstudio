@@ -1,28 +1,10 @@
+
 'use client';
 
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-interface SignUpMetadata {
-  fullName?: string;
-  avatarUrl?: string;
-  plan?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  signUp: (email: string, password: string, metadata?: SignUpMetadata) => Promise<any>;
-  signIn: (email: string, password: string) => Promise<any>;
-  signOut: () => Promise<void>;
-  getCurrentUser: () => Promise<User | null>;
-  isEmailVerified: () => boolean;
-  getUserProfile: () => Promise<any>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<any>({});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -33,22 +15,20 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  // Instancia memorizada del cliente cliente
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
 
   useEffect(() => {
-    // 1. Obtener la sesión inicial
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // 2. Escuchar cambios de autenticación en tiempo real
+    // Listen for auth changes
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -58,14 +38,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   // Email/Password Sign Up
-  const signUp = async (
-    email: string, 
-    password: string, 
-    metadata: SignUpMetadata = {}
-  ) => {
+  const signUp = async (email: string, password: string, metadata: { fullName?: string; avatarUrl?: string; plan?: string } = {}) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -73,25 +49,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         data: {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || ''
-        }
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });
     if (error) throw error;
 
-    // Enviar OTP vía API route (Resend)
-    const otpRes = await fetch('/api/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        name: metadata?.fullName || '',
-        type: 'signup',
-      }),
-    });
-
-    if (!otpRes.ok) {
-      const otpResult = await otpRes.json().catch(() => ({}));
-      console.error('OTP send error:', otpResult?.error);
+    // Only insert subscription if a paid plan was selected
+    // In production, this should be triggered by payment confirmation webhook
+    // For demo purposes, we allow direct insert for non-free plans
+    const userId = data.user?.id;
+    const tier = metadata?.plan;
+    if (userId && tier && tier !== 'free') {
+      const { error: subError } = await supabase
+        .from('subscriptions')
+        .insert({ user_id: userId, tier, status: 'active' });
+      if (subError) {
+        console.log('Subscription insert note:', subError.message);
+      }
     }
 
     return data;
@@ -113,16 +88,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
   };
 
-  // Get Current User desde el servidor/API de Supabase
+  // Get Current User
   const getCurrentUser = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) throw error;
     return user;
   };
 
-  // Check if Email is Verified (Fix de evaluación boolean)
+  // Check if Email is Verified
   const isEmailVerified = () => {
-    return Boolean(user && user.email_confirmed_at);
+    return user?.email_confirmed_at !== null;
   };
 
   // Get User Profile from Database
@@ -133,7 +108,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .select('*')
       .eq('id', user.id)
       .single();
-      
     if (error) throw error;
     return data;
   };

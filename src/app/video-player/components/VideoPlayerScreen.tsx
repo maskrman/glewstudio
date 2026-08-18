@@ -9,10 +9,7 @@ import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserSubscriptionTier, hasAccess, TIER_LABELS, TIER_PRICES, type SubscriptionTier } from '@/lib/subscription';
-
-import { createClient } from '@/lib/supabase/client';
-import { generateSignedVideoUrl, saveVideoProgress } from '@/app/actions/video';
-import LessonResources from '@/components/LessonResources';
+import { updateCourseProgress } from '@/lib/courseProgress';
 
 // Course tier requirement — this course requires at least "obturador"
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
@@ -28,12 +25,8 @@ const COURSE_META = {
   totalSeconds: 202 * 60
 };
 
-// Current lesson id and duration
-const CURRENT_LESSON_ID = 'lesson-004';
+// Current lesson duration in seconds (Lección 4: 14:32)
 const CURRENT_LESSON_SECONDS = 14 * 60 + 32;
-
-// Token refresh interval: refresh 10 minutes before expiry (110 min for 2-hour tokens)
-const TOKEN_REFRESH_MS = 110 * 60 * 1000;
 
 const chapters = [
 { id: 'ch-001', number: 1, title: 'Introducción al Esquema Rembrandt', duration: '08:42', completed: true, current: false },
@@ -50,7 +43,12 @@ const chapters = [
 { id: 'ch-012', number: 12, title: 'Proyecto Final y Revisión', duration: '19:08', completed: false, current: false }];
 
 
-// Resources are now loaded dynamically from Supabase via LessonResources component
+const resources = [
+{ id: 'res-001', name: 'Archivo RAW — Lección 4 (Canon 5D MkIV)', size: '48.2 MB', type: 'RAW', tier: 'obturador' as SubscriptionTier, icon: 'DocumentArrowDownIcon' },
+{ id: 'res-002', name: 'Esquema de Iluminación Rembrandt — PDF', size: '2.8 MB', type: 'PDF', tier: 'obturador' as SubscriptionTier, icon: 'DocumentTextIcon' },
+{ id: 'res-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', size: '1.1 MB', type: 'PRESET', tier: 'obturador' as SubscriptionTier, icon: 'SwatchIcon' },
+{ id: 'res-004', name: 'LUT Cinematográfico — Rembrandt Gold', size: '0.8 MB', type: 'LUT', tier: 'diafragma' as SubscriptionTier, icon: 'FilmIcon' },
+{ id: 'res-005', name: 'Archivo RAW — Sesión Completa (12 tomas)', size: '312 MB', type: 'RAW', tier: 'diafragma' as SubscriptionTier, icon: 'DocumentArrowDownIcon' }];
 
 
 interface LockOverlayProps {
@@ -179,14 +177,6 @@ export default function VideoPlayerScreen() {
   const [userTier, setUserTier] = useState<SubscriptionTier>(null);
   const [tierLoading, setTierLoading] = useState(true);
 
-  // Secure video URL state
-  const [secureVideoUrl, setSecureVideoUrl] = useState<string | null>(null);
-  const [videoUrlLoading, setVideoUrlLoading] = useState(false);
-  const tokenRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Native video element ref for real playback tracking
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
   const [playing, setPlaying] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'chapters' | 'resources'>('chapters');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -198,46 +188,12 @@ export default function VideoPlayerScreen() {
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockedResource, setLockedResource] = useState<{name: string;tier: SubscriptionTier;}>({ name: '', tier: null });
 
-  // Controls auto-hide state
-  const [controlsVisible, setControlsVisible] = useState(true);
-  const controlsHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Progress tracking state
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [markingComplete, setMarkingComplete] = useState(false);
   const progressFiredRef = useRef(false);
   const playStartTimeRef = useRef<number | null>(null);
   const accumulatedSecondsRef = useRef(0);
-  // Ref to suppress real-time echo when this device is the one writing
-  const isLocalWriteRef = useRef(false);
-  // Track whether 90% auto-complete has already been triggered
-  const autoCompleteTriggeredRef = useRef(false);
-
-  // Show controls and reset hide timer
-  const showControls = useCallback(() => {
-    setControlsVisible(true);
-    if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
-    if (playing) {
-      controlsHideTimerRef.current = setTimeout(() => {
-        setControlsVisible(false);
-      }, 3000);
-    }
-  }, [playing]);
-
-  // Reset timer whenever playing state changes
-  useEffect(() => {
-    if (!playing) {
-      setControlsVisible(true);
-      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
-    } else {
-      controlsHideTimerRef.current = setTimeout(() => {
-        setControlsVisible(false);
-      }, 3000);
-    }
-    return () => {
-      if (controlsHideTimerRef.current) clearTimeout(controlsHideTimerRef.current);
-    };
-  }, [playing]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -255,39 +211,7 @@ export default function VideoPlayerScreen() {
   const isAuthenticated = !!user;
   const isLoading = authLoading || tierLoading;
 
-  /**
-   * Fetch a signed video URL using the Server Action.
-   * The URL expires in 2 hours; we schedule a refresh every 110 minutes.
-   */
-  const fetchSecureVideoUrl = useCallback(async () => {
-    if (!user || !canAccessCourse) return;
-    setVideoUrlLoading(true);
-    try {
-      const result = await generateSignedVideoUrl(COURSE_META.id, CURRENT_LESSON_ID);
-      if (result.url) {
-        setSecureVideoUrl(result.url);
-        // Schedule next refresh before the 2-hour token expires
-        if (tokenRefreshTimerRef.current) clearTimeout(tokenRefreshTimerRef.current);
-        tokenRefreshTimerRef.current = setTimeout(fetchSecureVideoUrl, TOKEN_REFRESH_MS);
-      }
-    } catch {
-      // Silently fail — video will fall back to thumbnail placeholder
-    } finally {
-      setVideoUrlLoading(false);
-    }
-  }, [user, canAccessCourse]);
-
-  // Fetch secure URL once user has access
-  useEffect(() => {
-    if (!isLoading && canAccessCourse && user) {
-      fetchSecureVideoUrl();
-    }
-    return () => {
-      if (tokenRefreshTimerRef.current) clearTimeout(tokenRefreshTimerRef.current);
-    };
-  }, [isLoading, canAccessCourse, user, fetchSecureVideoUrl]);
-
-  // Track accumulated watch time while playing (for simulated progress fallback)
+  // Track accumulated watch time while playing
   useEffect(() => {
     if (!canAccessCourse || !user) return;
 
@@ -302,9 +226,9 @@ export default function VideoPlayerScreen() {
     }
   }, [playing, canAccessCourse, user]);
 
-  // Simulate video progress when playing (only when no real video URL is available)
+  // Simulate video progress when playing
   useEffect(() => {
-    if (!playing || !canAccessCourse || secureVideoUrl) return;
+    if (!playing || !canAccessCourse) return;
     const interval = setInterval(() => {
       setProgress((prev) => {
         const next = prev + 0.5;
@@ -317,50 +241,7 @@ export default function VideoPlayerScreen() {
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [playing, canAccessCourse, secureVideoUrl]);
-
-  /**
-   * Handle real video timeupdate events.
-   * - Updates progress bar from actual currentTime / duration
-   * - Auto-marks lesson complete when 90% of the video has been watched
-   */
-  const handleTimeUpdate = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || !canAccessCourse || !user) return;
-
-    const { currentTime, duration } = video;
-    if (!duration || duration === 0) return;
-
-    const pct = Math.min(100, Math.round((currentTime / duration) * 100));
-    setProgress(pct);
-
-    // Auto-mark complete at 90%
-    if (pct >= 90 && !autoCompleteTriggeredRef.current && !progressFiredRef.current) {
-      autoCompleteTriggeredRef.current = true;
-      progressFiredRef.current = true;
-      setLessonCompleted(true);
-
-      // Flush accumulated seconds from real playback
-      const additionalSeconds = Math.floor(currentTime);
-      accumulatedSecondsRef.current = 0;
-
-      isLocalWriteRef.current = true;
-      saveVideoProgress({
-        courseId: COURSE_META.id,
-        courseTitle: COURSE_META.title,
-        courseInstructor: COURSE_META.instructor,
-        courseThumbnail: COURSE_META.thumbnail,
-        courseThumbnailAlt: COURSE_META.thumbnailAlt,
-        additionalSeconds,
-        totalSeconds: COURSE_META.totalSeconds,
-        markComplete: true,
-      }).then(() => {
-        setTimeout(() => { isLocalWriteRef.current = false; }, 1500);
-      });
-
-      toast.success('¡Lección completada! Tu progreso ha sido guardado.');
-    }
-  }, [canAccessCourse, user]);
+  }, [playing, canAccessCourse]);
 
   const fireProgressUpdate = useCallback(async (markComplete: boolean) => {
     if (!user) return;
@@ -372,21 +253,17 @@ export default function VideoPlayerScreen() {
       playStartTimeRef.current = null;
     }
 
-    // If real video is available, use its currentTime instead
-    const videoEl = videoRef.current;
-    const additionalSeconds = videoEl
-      ? Math.floor(videoEl.currentTime)
-      : accumulatedSecondsRef.current > 0
-      ? accumulatedSecondsRef.current
-      : markComplete
-      ? CURRENT_LESSON_SECONDS
-      : 0;
+    const additionalSeconds = accumulatedSecondsRef.current > 0 ?
+    accumulatedSecondsRef.current :
+    markComplete ?
+    CURRENT_LESSON_SECONDS :
+    0;
 
     if (additionalSeconds === 0 && !markComplete) return;
 
     try {
-      isLocalWriteRef.current = true;
-      await saveVideoProgress({
+      await updateCourseProgress({
+        userId: user.id,
         courseId: COURSE_META.id,
         courseTitle: COURSE_META.title,
         courseInstructor: COURSE_META.instructor,
@@ -394,22 +271,20 @@ export default function VideoPlayerScreen() {
         courseThumbnailAlt: COURSE_META.thumbnailAlt,
         additionalSeconds,
         totalSeconds: COURSE_META.totalSeconds,
-        markComplete,
+        completed: markComplete
       });
       accumulatedSecondsRef.current = 0;
     } catch {
+
       // silently fail — don't interrupt the user experience
-    } finally {
-      setTimeout(() => { isLocalWriteRef.current = false; }, 1500);
-    }
-  }, [user]);
+    }}, [user]);
 
   const handleVideoEnd = useCallback(async () => {
     if (progressFiredRef.current) return;
     progressFiredRef.current = true;
     setPlaying(false);
     setLessonCompleted(true);
-    await fireProgressUpdate(true);
+    await fireProgressUpdate(false);
     toast.success('¡Lección completada! Tu progreso ha sido guardado.');
   }, [fireProgressUpdate]);
 
@@ -423,24 +298,15 @@ export default function VideoPlayerScreen() {
     toast.success('¡Lección marcada como completada!');
   };
 
-  // Sync playback rate when speed changes
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const rate = parseFloat(speed.replace('x', ''));
-    if (!isNaN(rate)) video.playbackRate = rate;
-  }, [speed]);
-
-  // Sync play/pause state with native video element
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !secureVideoUrl) return;
-    if (playing) {
-      video.play().catch(() => setPlaying(false));
-    } else {
-      video.pause();
+  const handleDownload = (res: typeof resources[0]) => {
+    const resourceLocked = !hasAccess(userTier, res.tier);
+    if (!isAuthenticated || resourceLocked) {
+      setLockedResource({ name: res.name, tier: res.tier });
+      setShowLockModal(true);
+      return;
     }
-  }, [playing, secureVideoUrl]);
+    toast.success(`Descargando ${res.name}…`);
+  };
 
   const handleChapterClick = (ch: typeof chapters[0]) => {
     if (!canAccessCourse) {
@@ -450,55 +316,6 @@ export default function VideoPlayerScreen() {
     }
     toast.info(`Saltando a: ${ch.title}`);
   };
-
-  // Real-time subscription: sync progress from other devices
-  useEffect(() => {
-    if (!user || !canAccessCourse) return;
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`course_progress_${user.id}_${COURSE_META.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'course_progress',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (isLocalWriteRef.current) return;
-
-          const row = payload.new as {
-            course_id?: string;
-            watched_seconds?: number;
-            total_seconds?: number;
-            completed?: boolean;
-          } | null;
-
-          if (!row || row.course_id !== COURSE_META.id) return;
-
-          const watchedSec = row.watched_seconds ?? 0;
-          const totalSec = row.total_seconds ?? COURSE_META.totalSeconds;
-          const remoteCompleted = row.completed ?? false;
-
-          if (totalSec > 0) {
-            const pct = Math.min(100, Math.round((watchedSec / totalSec) * 100));
-            setProgress(pct);
-          }
-
-          if (remoteCompleted && !progressFiredRef.current) {
-            progressFiredRef.current = true;
-            setLessonCompleted(true);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, canAccessCourse]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -529,43 +346,18 @@ export default function VideoPlayerScreen() {
         {/* Video area */}
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300`}>
           {/* Player */}
-          <div
-            className="relative bg-black w-full"
-            style={{ aspectRatio: '16/9' }}
-            onMouseMove={showControls}
-            onMouseEnter={showControls}
-            onTouchStart={showControls}
-          >
-
-            {/* Native video element — shown when signed URL is available */}
-            {secureVideoUrl && canAccessCourse && (
-              <video
-                ref={videoRef}
-                src={secureVideoUrl}
-                className="absolute inset-0 w-full h-full object-contain"
-                onTimeUpdate={handleTimeUpdate}
-                onEnded={handleVideoEnd}
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
-                controlsList="nodownload"
-                disablePictureInPicture={false}
-                playsInline
-              />
-            )}
-
-            {/* Thumbnail fallback — shown when no signed URL yet */}
-            {!secureVideoUrl && (
-              <AppImage
-                src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
-                alt="Studio photography lesson showing Rembrandt lighting technique with professional strobe setup"
-                fill
-                priority
-                className="object-cover"
-                sizes="100vw" />
-            )}
+          <div className="relative bg-black w-full" style={{ aspectRatio: '16/9' }}>
+            <AppImage
+              src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
+              alt="Studio photography lesson showing Rembrandt lighting technique with professional strobe setup"
+              fill
+              priority
+              className="object-cover"
+              sizes="100vw" />
+            
 
             {/* Loading state */}
-            {(isLoading || videoUrlLoading) &&
+            {isLoading &&
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
@@ -577,10 +369,11 @@ export default function VideoPlayerScreen() {
               isAuthenticated={isAuthenticated}
               userTier={userTier}
               requiredTier={COURSE_REQUIRED_TIER} />
+
             }
 
             {/* Lesson completed overlay */}
-            {!isLoading && canAccessCourse && lessonCompleted && progress >= 90 &&
+            {!isLoading && canAccessCourse && lessonCompleted && progress >= 100 &&
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
                 <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center mb-4">
                   <Icon name="CheckIcon" size={32} className="text-primary" />
@@ -598,7 +391,8 @@ export default function VideoPlayerScreen() {
             {!isLoading && canAccessCourse && !lessonCompleted &&
             <div
               className="absolute inset-0 flex items-center justify-center cursor-pointer group"
-              onClick={() => { setPlaying(!playing); showControls(); }}>
+              onClick={() => setPlaying(!playing)}>
+              
                 <div className={`w-16 h-16 rounded-full bg-black/50 border-2 border-white/30 flex items-center justify-center transition-opacity ${playing ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
                   <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={28} className="text-white ml-1" />
                 </div>
@@ -606,7 +400,7 @@ export default function VideoPlayerScreen() {
             }
 
             {/* Controls bar */}
-            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-8 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 pb-3 pt-8">
               {/* Progress */}
               <div className="mb-3 group cursor-pointer">
                 <div className="h-1 bg-white/20 rounded-full overflow-hidden group-hover:h-1.5 transition-all">
@@ -620,6 +414,7 @@ export default function VideoPlayerScreen() {
                     onClick={() => canAccessCourse && !lessonCompleted && setPlaying(!playing)}
                     className="text-white hover:text-primary transition-colors"
                     aria-label={playing ? 'Pausar' : 'Reproducir'}>
+                    
                     <Icon name={playing ? 'PauseIcon' : 'PlayIcon'} size={22} />
                   </button>
                   <button className="text-white/70 hover:text-white transition-colors" aria-label="Anterior">
@@ -756,7 +551,7 @@ export default function VideoPlayerScreen() {
             <div className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl max-w-lg">
               <div className="relative w-20 h-12 rounded-lg overflow-hidden shrink-0">
                 <AppImage
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1cb16a1d8-1785194269805.png"
                   alt="Next lesson preview showing model positioning technique for Rembrandt lighting"
                   fill
                   className="object-cover"
@@ -851,13 +646,79 @@ export default function VideoPlayerScreen() {
             }
 
               {sidebarTab === 'resources' &&
-            <LessonResources
-                  courseId={COURSE_META.id}
-                  lessonId={CURRENT_LESSON_ID}
-                  userTier={userTier}
-                  isAuthenticated={isAuthenticated}
-                  isLoading={isLoading}
-                />
+            <div className="p-4">
+                  <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                    Archivos descargables para esta lección. Los recursos marcados requieren Plan Diafragma.
+                  </p>
+                  {/* Subscription status indicator */}
+                  {!isLoading &&
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg mb-4 text-xs ${
+              canAccessCourse ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`
+              }>
+                      <Icon name={canAccessCourse ? 'CheckCircleIcon' : 'LockClosedIcon'} size={13} />
+                      <span>
+                        {isAuthenticated ?
+                  userTier ?
+                  `Plan activo: ${TIER_LABELS[userTier]}` :
+                  'Sin suscripción activa' : 'Inicia sesión para descargar'}
+                      </span>
+                    </div>
+              }
+                  <div className="flex flex-col gap-3">
+                    {resources.map((res) => {
+                  const resLocked = !hasAccess(userTier, res.tier);
+                  return (
+                    <div
+                      key={res.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                      resLocked ?
+                      'border-border opacity-60' : 'border-border hover:border-primary/30 hover:bg-primary/5'}`
+                      }>
+                      
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      resLocked ? 'bg-muted' : 'bg-primary/10'}`
+                      }>
+                            <Icon
+                          name={res.icon as any}
+                          size={18}
+                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
+                        
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-600 text-foreground truncate">{res.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-muted-foreground">{res.size}</span>
+                              <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-600">
+                                {res.type}
+                              </span>
+                              {res.tier &&
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-600 ${
+                          res.tier === 'diafragma' ? 'tier-badge-diafragma' : 'tier-badge-obturador'}`
+                          }>
+                                  {res.tier === 'diafragma' ? 'Master' : 'Pro'}
+                                </span>
+                          }
+                            </div>
+                          </div>
+                          <button
+                        onClick={() => handleDownload(res)}
+                        className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                        resLocked ?
+                        'bg-muted cursor-not-allowed' : 'bg-primary/10 hover:bg-primary/20 text-primary'}`
+                        }
+                        aria-label={resLocked ? 'Contenido bloqueado' : `Descargar ${res.name}`}>
+                        
+                            <Icon
+                          name={resLocked ? 'LockClosedIcon' : 'ArrowDownTrayIcon'}
+                          size={14}
+                          className={resLocked ? 'text-muted-foreground' : 'text-primary'} />
+                        
+                          </button>
+                        </div>);
+
+                })}
+                  </div>
+                </div>
             }
             </div>
           </aside>
