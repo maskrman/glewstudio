@@ -8,7 +8,10 @@ import { hasAccess, type SubscriptionTier } from '@/lib/config';
  * Authorization model (server-side, in order):
  *   1. User must be authenticated (auth.getUser()).
  *   2. courseId and lessonId must be present in query params.
- *   3. Access is granted if EITHER:
+ *   3. The required tier for the course is fetched from the `courses` table
+ *      (courses.minimum_tier) — it is NEVER read from the request.
+ *      The client cannot manipulate the required tier.
+ *   4. Access is granted if EITHER:
  *      a. course_purchases row exists where:
  *           user_id  = authenticated user's id
  *           course_id = requested courseId
@@ -16,13 +19,16 @@ import { hasAccess, type SubscriptionTier } from '@/lib/config';
  *      b. subscriptions row exists where:
  *           user_id = authenticated user's id
  *           status  = 'active'
- *           AND the subscription tier is sufficient for the course's required tier
+ *           AND the subscription tier is sufficient for the course's minimum_tier
  *             (tier check is performed server-side via hasAccess())
- *   4. If the video asset does not exist in storage → 404 (not 200+null).
- *   5. Internal errors → 500.
+ *   5. If the video asset does not exist in storage → 404 (not 200+null).
+ *   6. Internal errors → 500.
  *
  * Usage:
- *   GET /api/video-token?courseId=<id>&lessonId=<id>&requiredTier=<tier>
+ *   GET /api/video-token?courseId=<id>&lessonId=<id>
+ *
+ * Note: requiredTier is intentionally NOT accepted as a query parameter.
+ * The required tier is always fetched from the database.
  *
  * Returns:
  *   { url: "<signed-url>", expiresAt: "<iso-timestamp>" }
@@ -50,10 +56,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
     const lessonId = searchParams.get('lessonId');
-    // requiredTier: the minimum subscription tier needed for this course.
-    // Provided by the caller (e.g. VideoPlayerScreen) based on course metadata.
-    // Server validates this against the user's actual subscription tier.
-    const requiredTier = (searchParams.get('requiredTier') ?? null) as SubscriptionTier;
+
+    // SECURITY: requiredTier is intentionally NOT read from query params.
+    // The required tier is always fetched from the database (step 3 below).
 
     if (!courseId || !lessonId) {
       return NextResponse.json(
@@ -62,7 +67,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ── 3a. Check course_purchases (explicit purchase) ──────────────────────
+    // ── 3. Fetch required tier from database (server-side authority) ─────────
+    // The minimum_tier for this course is determined by the database record,
+    // never by the client. This prevents clients from sending requiredTier=apertura
+    // to bypass a course that actually requires diafragma.
+    const { data: courseRow, error: courseError } = await supabase
+      .from('courses')
+      .select('id, minimum_tier, access_type')
+      .eq('id', courseId)
+      .maybeSingle();
+
+    if (courseError) {
+      console.error('[video-token] course lookup error:', courseError.message);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+
+    if (!courseRow) {
+      console.warn(`[video-token] Course not found: courseId=${courseId}`);
+      return NextResponse.json(
+        { error: `Course not found: ${courseId}` },
+        { status: 404 }
+      );
+    }
+
+    // The required tier comes from the database, not from the request.
+    const requiredTier = (courseRow.minimum_tier ?? null) as SubscriptionTier;
+    const accessType = courseRow.access_type as string;
+
+    // ── 4a. Check course_purchases (explicit purchase) ──────────────────────
     // Must match: user_id = auth user, course_id = requested course, purchase_status = 'paid'
     const { data: purchase, error: purchaseError } = await supabase
       .from('course_purchases')
@@ -79,33 +111,39 @@ export async function GET(request: NextRequest) {
 
     const hasPurchase = !!purchase;
 
-    // ── 3b. Check subscription (membership access) ──────────────────────────
+    // ── 4b. Check subscription (membership access) ──────────────────────────
     // Must match: user_id = auth user, status = 'active'
-    // AND subscription tier must be sufficient for the required tier of this course.
+    // AND subscription tier must be sufficient for the course's minimum_tier
+    // (fetched from DB above — not from the request).
     let hasSubscriptionAccess = false;
 
     if (!hasPurchase) {
-      const { data: subscription, error: subscriptionError } = await supabase
-        .from('subscriptions')
-        .select('tier, status')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .maybeSingle();
+      // Free courses are accessible to all authenticated users
+      if (accessType === 'free') {
+        hasSubscriptionAccess = true;
+      } else {
+        const { data: subscription, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('tier, status')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle();
 
-      if (subscriptionError) {
-        console.error('[video-token] subscription check error:', subscriptionError.message);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-      }
+        if (subscriptionError) {
+          console.error('[video-token] subscription check error:', subscriptionError.message);
+          return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        }
 
-      if (subscription) {
-        const userTier = subscription.tier as SubscriptionTier;
-        // If no requiredTier is specified, any active subscription grants access.
-        // If requiredTier is specified, the user's tier must be >= requiredTier.
-        hasSubscriptionAccess = hasAccess(userTier, requiredTier);
+        if (subscription) {
+          const userTier = subscription.tier as SubscriptionTier;
+          // requiredTier is from the database (courses.minimum_tier), not the request.
+          // If minimum_tier is null, any active subscription grants access.
+          hasSubscriptionAccess = hasAccess(userTier, requiredTier);
+        }
       }
     }
 
-    // ── 3c. Deny if neither purchase nor sufficient subscription ─────────────
+    // ── 4c. Deny if neither purchase nor sufficient subscription ─────────────
     if (!hasPurchase && !hasSubscriptionAccess) {
       return NextResponse.json(
         {
@@ -117,7 +155,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ── 4. Generate signed URL ───────────────────────────────────────────────
+    // ── 5. Generate signed URL ───────────────────────────────────────────────
     const videoPath = `${courseId}/${lessonId}.mp4`;
 
     const { data: signedData, error: signError } = await supabase.storage
@@ -126,7 +164,6 @@ export async function GET(request: NextRequest) {
 
     if (signError) {
       // Distinguish between "file not found" and other storage errors.
-      // Supabase Storage returns "Object not found" for missing files.
       const isNotFound =
         signError.message?.toLowerCase().includes('not found') ||
         signError.message?.toLowerCase().includes('does not exist');
