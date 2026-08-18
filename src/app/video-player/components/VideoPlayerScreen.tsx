@@ -276,9 +276,9 @@ export default function VideoPlayerScreen() {
       accumulatedSecondsRef.current = 0;
     } catch {
 
+
       // silently fail — don't interrupt the user experience
     }}, [user]);
-
   const handleVideoEnd = useCallback(async () => {
     if (progressFiredRef.current) return;
     progressFiredRef.current = true;
@@ -551,7 +551,7 @@ export default function VideoPlayerScreen() {
             <div className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl max-w-lg">
               <div className="relative w-20 h-12 rounded-lg overflow-hidden shrink-0">
                 <AppImage
-                  src="https://img.rocket.new/generatedImages/rocket_gen_img_1cb16a1d8-1785194269805.png"
+                  src="https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png"
                   alt="Next lesson preview showing model positioning technique for Rembrandt lighting"
                   fill
                   className="object-cover"

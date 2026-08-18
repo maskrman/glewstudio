@@ -47,9 +47,9 @@ export default function DashboardHero() {
       }
     } catch {
 
+
       // silently fail if not authenticated
-    } finally {setListLoading(false);
-    }
+    } finally {setListLoading(false);}
   };
 
   return (

@@ -8,9 +8,9 @@ import TierBadge from '@/components/ui/TierBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getUserSubscriptionTier,
-  type SubscriptionTier,
-} from '@/lib/subscription';
-import { canAccessCourse, calculateCoursePrice, TIER_LABELS,  } from '@/lib/config';
+  type SubscriptionTier } from
+'@/lib/subscription';
+import { canAccessCourse, calculateCoursePrice, TIER_LABELS } from '@/lib/config';
 
 interface CourseDetailHeroProps {
   courseSlug?: string;
@@ -38,7 +38,7 @@ const DEMO_COURSE = {
   level: 'Nivel Intermedio',
   accessType: 'membership' as const,
   minimumTier: 'obturador' as SubscriptionTier,
-  price: null as number | null,
+  price: null as number | null
 };
 
 export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) {
@@ -48,7 +48,7 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { setTierLoading(false); return; }
+    if (!user) {setTierLoading(false);return;}
     getUserSubscriptionTier().then((tier) => {
       setUserTier(tier);
       setTierLoading(false);
@@ -63,12 +63,12 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
     minimumTier: DEMO_COURSE.minimumTier,
     userTier,
     isAuthenticated,
-    hasPurchased: false,
+    hasPurchased: false
   });
 
-  const priceInfo = DEMO_COURSE.price
-    ? calculateCoursePrice(DEMO_COURSE.price, userTier)
-    : null;
+  const priceInfo = DEMO_COURSE.price ?
+  calculateCoursePrice(DEMO_COURSE.price, userTier) :
+  null;
 
   return (
     <section className="relative w-full pt-16 overflow-hidden">
@@ -80,8 +80,8 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
           fill
           priority
           className="object-cover object-center opacity-20"
-          sizes="100vw"
-        />
+          sizes="100vw" />
+        
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
       </div>
 
@@ -108,18 +108,18 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
               </span>
 
               {/* Access status badge */}
-              {!isLoading && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-500 flex items-center gap-1 ${
-                  hasAccess ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                }`}>
+              {!isLoading &&
+              <span className={`text-xs px-2 py-0.5 rounded-full font-500 flex items-center gap-1 ${
+              hasAccess ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`
+              }>
                   <Icon name={hasAccess ? 'CheckCircleIcon' : 'LockClosedIcon'} size={11} />
-                  {hasAccess
-                    ? 'Acceso incluido'
-                    : DEMO_COURSE.accessType === 'membership' && DEMO_COURSE.minimumTier
-                    ? `Requiere ${TIER_LABELS[DEMO_COURSE.minimumTier]}`
-                    : 'Requiere compra'}
+                  {hasAccess ?
+                'Acceso incluido' :
+                DEMO_COURSE.accessType === 'membership' && DEMO_COURSE.minimumTier ?
+                `Requiere ${TIER_LABELS[DEMO_COURSE.minimumTier]}` :
+                'Requiere compra'}
                 </span>
-              )}
+              }
             </div>
 
             <h1 className="text-3xl xl:text-4xl font-800 text-foreground mb-4 leading-tight">
@@ -134,9 +134,9 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
             <div className="flex flex-wrap items-center gap-5 mb-6 text-sm">
               <div className="flex items-center gap-1.5">
                 <div className="flex">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Icon key={`detail-star-${i}`} name="StarIcon" size={14} className="text-primary" variant="solid" />
-                  ))}
+                  {Array.from({ length: 5 }).map((_, i) =>
+                  <Icon key={`detail-star-${i}`} name="StarIcon" size={14} className="text-primary" variant="solid" />
+                  )}
                 </div>
                 <span className="font-700 text-foreground">{DEMO_COURSE.rating}</span>
                 <span className="text-muted-foreground">({DEMO_COURSE.reviewCount.toLocaleString()} reseñas)</span>
@@ -163,8 +163,8 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
                   alt={DEMO_COURSE.instructorAvatarAlt}
                   fill
                   className="object-cover"
-                  sizes="40px"
-                />
+                  sizes="40px" />
+                
               </div>
               <div>
                 <p className="text-sm font-600 text-foreground">{DEMO_COURSE.instructor}</p>
@@ -173,53 +173,53 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
             </div>
 
             {/* Pricing block for premium courses */}
-            {priceInfo && (
-              <div className="bg-card border border-border rounded-xl p-4 max-w-sm mb-4">
+            {priceInfo &&
+            <div className="bg-card border border-border rounded-xl p-4 max-w-sm mb-4">
                 <p className="text-xs text-muted-foreground mb-2 font-500">Precio del curso</p>
-                {priceInfo.discountPct > 0 ? (
-                  <div className="flex items-end gap-3">
+                {priceInfo.discountPct > 0 ?
+              <div className="flex items-end gap-3">
                     <span className="text-3xl font-800 gradient-gold-text">${priceInfo.finalPrice}</span>
                     <span className="text-muted-foreground line-through text-sm mb-1">${priceInfo.originalPrice}</span>
                     <span className="text-primary text-xs font-700 bg-primary/10 px-2 py-0.5 rounded-full mb-1">
                       -{priceInfo.discountPct}% {userTier ? TIER_LABELS[userTier] : ''}
                     </span>
-                  </div>
-                ) : (
-                  <span className="text-3xl font-800 gradient-gold-text">${priceInfo.originalPrice}</span>
-                )}
-                {!isAuthenticated && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  </div> :
+
+              <span className="text-3xl font-800 gradient-gold-text">${priceInfo.originalPrice}</span>
+              }
+                {!isAuthenticated &&
+              <p className="text-xs text-muted-foreground mt-2">
                     <Icon name="TagIcon" size={11} className="inline mr-1 text-primary" />
                     Los miembros obtienen hasta 30% de descuento
                   </p>
-                )}
-                {isAuthenticated && !userTier && (
-                  <p className="text-xs text-muted-foreground mt-2">
+              }
+                {isAuthenticated && !userTier &&
+              <p className="text-xs text-muted-foreground mt-2">
                     <Icon name="TagIcon" size={11} className="inline mr-1 text-primary" />
                     Suscríbete para obtener hasta 30% de descuento
                   </p>
-                )}
+              }
               </div>
-            )}
+            }
 
             {/* Membership discount preview for premium courses */}
-            {priceInfo && !hasAccess && (
-              <div className="bg-muted/50 border border-border rounded-xl p-4 max-w-sm">
+            {priceInfo && !hasAccess &&
+            <div className="bg-muted/50 border border-border rounded-xl p-4 max-w-sm">
                 <p className="text-xs font-600 text-foreground mb-3">Precio según membresía</p>
                 <div className="flex flex-col gap-1.5">
                   {(['apertura', 'obturador', 'diafragma'] as const).map((tier) => {
-                    const info = calculateCoursePrice(priceInfo.originalPrice, tier);
-                    return (
-                      <div key={tier} className="flex items-center justify-between text-xs">
+                  const info = calculateCoursePrice(priceInfo.originalPrice, tier);
+                  return (
+                    <div key={tier} className="flex items-center justify-between text-xs">
                         <TierBadge tier={tier} size="sm" />
                         <span className="text-foreground font-600">${info.finalPrice}</span>
                         <span className="text-primary font-500">-{info.discountPct}%</span>
-                      </div>
-                    );
-                  })}
+                      </div>);
+
+                })}
                 </div>
               </div>
-            )}
+            }
           </div>
 
           {/* Right: thumbnail */}
@@ -230,42 +230,42 @@ export default function CourseDetailHero({ courseSlug }: CourseDetailHeroProps) 
                 alt={DEMO_COURSE.thumbnailAlt}
                 fill
                 className="object-cover"
-                sizes="400px"
-              />
+                sizes="400px" />
+              
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                {isLoading ? (
-                  <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center">
+                {isLoading ?
+                <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : hasAccess ? (
-                  <Link href="/video-player">
+                  </div> :
+                hasAccess ?
+                <Link href="/video-player">
                     <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-xl hover:bg-primary transition-colors">
                       <Icon name="PlayIcon" size={28} className="text-primary-foreground ml-1" />
                     </div>
-                  </Link>
-                ) : (
-                  <div className="text-center px-4">
+                  </Link> :
+
+                <div className="text-center px-4">
                     <div className="w-14 h-14 rounded-full bg-black/60 border border-white/20 flex items-center justify-center mx-auto mb-2">
                       <Icon name="LockClosedIcon" size={22} className="text-white/60" />
                     </div>
                     <p className="text-xs text-white/70">
-                      {isAuthenticated
-                        ? DEMO_COURSE.accessType === 'membership' && DEMO_COURSE.minimumTier
-                          ? `Requiere ${TIER_LABELS[DEMO_COURSE.minimumTier]}`
-                          : 'Requiere compra individual' :'Inicia sesión para acceder'}
+                      {isAuthenticated ?
+                    DEMO_COURSE.accessType === 'membership' && DEMO_COURSE.minimumTier ?
+                    `Requiere ${TIER_LABELS[DEMO_COURSE.minimumTier]}` :
+                    'Requiere compra individual' : 'Inicia sesión para acceder'}
                     </p>
                   </div>
-                )}
+                }
               </div>
-              {hasAccess && (
-                <div className="absolute bottom-3 left-3 bg-black/70 text-xs text-white px-2 py-1 rounded font-500">
+              {hasAccess &&
+              <div className="absolute bottom-3 left-3 bg-black/70 text-xs text-white px-2 py-1 rounded font-500">
                   Vista previa — Lección 1
                 </div>
-              )}
+              }
             </div>
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>);
+
 }

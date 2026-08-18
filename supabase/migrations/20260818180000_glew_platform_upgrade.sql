@@ -6,6 +6,51 @@
 -- 1. TYPES
 -- ============================================================
 
+-- Drop dependent columns before dropping types to avoid CASCADE issues
+DO $$
+BEGIN
+    -- Drop access_type column if it exists (will be re-added after type recreation)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'courses' AND column_name = 'access_type'
+    ) THEN
+        ALTER TABLE public.courses DROP COLUMN access_type;
+    END IF;
+
+    -- Drop minimum_tier column if it exists (will be re-added after type recreation)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'courses' AND column_name = 'minimum_tier'
+    ) THEN
+        ALTER TABLE public.courses DROP COLUMN minimum_tier;
+    END IF;
+
+    -- Drop level column if it exists (will be re-added after type recreation)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'courses' AND column_name = 'level'
+    ) THEN
+        ALTER TABLE public.courses DROP COLUMN level;
+    END IF;
+
+    -- Drop purchase_status column if it exists on course_purchases
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'course_purchases' AND column_name = 'purchase_status'
+    ) THEN
+        ALTER TABLE public.course_purchases DROP COLUMN purchase_status;
+    END IF;
+
+    -- Drop event_type column if it exists on payment_events
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'payment_events' AND column_name = 'event_type'
+    ) THEN
+        ALTER TABLE public.payment_events DROP COLUMN event_type;
+    END IF;
+END $$;
+
+-- Now safely drop and recreate types
 DROP TYPE IF EXISTS public.course_access_type CASCADE;
 CREATE TYPE public.course_access_type AS ENUM ('free', 'membership', 'premium_purchase');
 
@@ -59,11 +104,8 @@ CREATE TABLE IF NOT EXISTS public.courses (
     trailer_url TEXT,
     duration_minutes INTEGER NOT NULL DEFAULT 0,
     lesson_count INTEGER NOT NULL DEFAULT 0,
-    level public.course_level NOT NULL DEFAULT 'all_levels'::public.course_level,
     category TEXT NOT NULL DEFAULT '',
     tags TEXT[] DEFAULT ARRAY[]::TEXT[],
-    access_type public.course_access_type NOT NULL DEFAULT 'free'::public.course_access_type,
-    minimum_tier public.subscription_tier,
     price NUMERIC(10,2),
     is_published BOOLEAN NOT NULL DEFAULT false,
     is_featured BOOLEAN NOT NULL DEFAULT false,
@@ -73,6 +115,16 @@ CREATE TABLE IF NOT EXISTS public.courses (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add typed columns after types are created (safe for both fresh and existing tables)
+ALTER TABLE public.courses
+    ADD COLUMN IF NOT EXISTS level public.course_level NOT NULL DEFAULT 'all_levels'::public.course_level;
+
+ALTER TABLE public.courses
+    ADD COLUMN IF NOT EXISTS access_type public.course_access_type NOT NULL DEFAULT 'free'::public.course_access_type;
+
+ALTER TABLE public.courses
+    ADD COLUMN IF NOT EXISTS minimum_tier public.subscription_tier;
 
 CREATE INDEX IF NOT EXISTS idx_courses_slug ON public.courses (slug);
 CREATE INDEX IF NOT EXISTS idx_courses_access_type ON public.courses (access_type);
@@ -96,9 +148,6 @@ ALTER TABLE public.subscriptions
     ADD COLUMN IF NOT EXISTS provider_subscription_id TEXT,
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
 
--- Rename expires_at to current_period_end if it exists (safe migration)
--- We keep expires_at for backward compat and add current_period_end
-
 -- Update status column to use new enum (requires recreating with new type)
 -- Since we dropped and recreated the type, we need to update the column
 ALTER TABLE public.subscriptions
@@ -111,6 +160,11 @@ ALTER TABLE public.subscriptions
         ELSE 'active'::public.subscription_status
     END;
 
+-- Update tier column to use new enum
+ALTER TABLE public.subscriptions
+    ALTER COLUMN tier TYPE public.subscription_tier
+    USING tier::TEXT::public.subscription_tier;
+
 -- ============================================================
 -- 5. COURSE PURCHASES TABLE
 -- ============================================================
@@ -121,7 +175,6 @@ CREATE TABLE IF NOT EXISTS public.course_purchases (
     course_id UUID NOT NULL REFERENCES public.courses(id) ON DELETE RESTRICT,
     amount NUMERIC(10,2) NOT NULL,
     currency TEXT NOT NULL DEFAULT 'USD',
-    purchase_status public.purchase_status NOT NULL DEFAULT 'pending'::public.purchase_status,
     provider TEXT NOT NULL DEFAULT 'demo',
     provider_payment_id TEXT,
     discount_applied NUMERIC(5,2) DEFAULT 0,
@@ -132,6 +185,10 @@ CREATE TABLE IF NOT EXISTS public.course_purchases (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add typed column after type is created
+ALTER TABLE public.course_purchases
+    ADD COLUMN IF NOT EXISTS purchase_status public.purchase_status NOT NULL DEFAULT 'pending'::public.purchase_status;
 
 CREATE INDEX IF NOT EXISTS idx_course_purchases_user_id ON public.course_purchases (user_id);
 CREATE INDEX IF NOT EXISTS idx_course_purchases_course_id ON public.course_purchases (course_id);
@@ -149,7 +206,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_course_purchases_user_course_paid
 
 CREATE TABLE IF NOT EXISTS public.payment_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_type public.payment_event_type NOT NULL,
     provider TEXT NOT NULL DEFAULT 'demo',
     provider_event_id TEXT NOT NULL,
     payload JSONB NOT NULL DEFAULT '{}'::JSONB,
@@ -158,6 +214,10 @@ CREATE TABLE IF NOT EXISTS public.payment_events (
     error_message TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add typed column after type is created
+ALTER TABLE public.payment_events
+    ADD COLUMN IF NOT EXISTS event_type public.payment_event_type NOT NULL DEFAULT 'checkout_created'::public.payment_event_type;
 
 -- Unique constraint on provider_event_id to prevent double processing
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_events_provider_event
