@@ -10,6 +10,7 @@ import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { MEMBERSHIP_PRICES } from '@/lib/config';
 
 
 type AuthTab = 'login' | 'signup';
@@ -27,10 +28,11 @@ interface SignupForm {
   plan: string;
 }
 
+// Plans derived from centralized config — do NOT hardcode prices here
 const plans = [
-{ id: 'apertura', name: 'Apertura', price: '$9/mes', tier: 'apertura' as const },
-{ id: 'obturador', name: 'Obturador', price: '$18/mes', tier: 'obturador' as const, recommended: true },
-{ id: 'diafragma', name: 'Diafragma', price: '$36/mes', tier: 'diafragma' as const }];
+{ id: 'apertura', name: 'Apertura', price: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`, tier: 'apertura' as const },
+{ id: 'obturador', name: 'Obturador', price: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`, tier: 'obturador' as const, recommended: true },
+{ id: 'diafragma', name: 'Diafragma', price: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`, tier: 'diafragma' as const }];
 
 
 export default function AuthScreen() {

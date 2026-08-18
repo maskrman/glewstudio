@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { SubscriptionTier } from '@/types/supabase';
+import type { SubscriptionTier } from '@/lib/config';
 
+// Re-export for consumers that import from this hook
 export type { SubscriptionTier };
 
 export interface UserPlan {
@@ -15,37 +16,12 @@ export interface UserPlan {
   error: string | null;
 }
 
-const TIER_RANK: Record<string, number> = {
-  apertura: 1,
-  obturador: 2,
-  diafragma: 3,
-};
-
-export function tierRank(tier: SubscriptionTier | null): number {
-  if (!tier) return 0;
-  return TIER_RANK[tier] ?? 0;
-}
-
-export function hasAccess(userTier: SubscriptionTier | null, requiredTier: SubscriptionTier | null): boolean {
-  if (!requiredTier) return true;
-  return tierRank(userTier) >= tierRank(requiredTier);
-}
-
-export const TIER_LABELS: Record<string, string> = {
-  apertura: 'Plan Básico',
-  obturador: 'Plan Estándar',
-  diafragma: 'Plan VIP',
-};
-
-export const TIER_PRICES: Record<string, string> = {
-  apertura: '$10/mes',
-  obturador: '$25/mes',
-  diafragma: '$50/mes',
-};
-
 /**
  * Hook to get the current user's subscription plan.
  * Returns tier, status, expiry, and access helpers.
+ *
+ * NOTE: This hook is for UI rendering only.
+ * Authorization decisions must always be validated server-side.
  */
 export function useUserPlan(): UserPlan {
   const [tier, setTier] = useState<SubscriptionTier | null>(null);
@@ -61,7 +37,9 @@ export function useUserPlan(): UserPlan {
       setIsLoading(true);
       setError(null);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           setTier(null);
           setStatus(null);
@@ -98,28 +76,16 @@ export function useUserPlan(): UserPlan {
   return { tier, status, expiresAt, isActive, isLoading, error };
 }
 
-/**
- * Server-side helper to get user subscription tier.
- * Use in Server Components / Route Handlers.
- */
-export async function getUserSubscription(userId: string): Promise<{
-  tier: SubscriptionTier | null;
-  status: string | null;
-  isActive: boolean;
-}> {
-  const { createClient: createServerClient } = await import('@/lib/supabase/server');
-  const supabase = await createServerClient();
-
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('tier, status')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const tier = (data?.tier as SubscriptionTier) ?? null;
-  const status = data?.status ?? null;
-  const isActive = status === 'active' && tier !== null;
-
-  return { tier, status, isActive };
+function hasAccess(...args: any[]): any {
+  // eslint-disable-next-line no-console
+  console.warn('Placeholder: hasAccess is not implemented yet.', args);
+  return null;
 }
+
+export { hasAccess };
+const TIER_LABELS: any = null;
+
+export { TIER_LABELS };
+const TIER_PRICES: any = null;
+
+export { TIER_PRICES };

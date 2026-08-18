@@ -5,8 +5,7 @@ import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
-import { addToWatchlist, removeFromWatchlist } from '@/lib/watchlist';
-import { createClient } from '@/lib/supabase/client';
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist';
 
 const HERO_COURSE = {
   courseId: 'hero-iluminacion-cinematografica',
@@ -26,12 +25,8 @@ export default function DashboardHero() {
   const [muted, setMuted] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase?.auth?.getUser()?.then(({ data: { user } }) => {
-      if (!user) return;
-      supabase?.from('watchlist')?.select('id')?.eq('user_id', user?.id)?.eq('course_id', HERO_COURSE?.courseId)?.maybeSingle()?.then(({ data }) => {
-        if (data) setInList(true);
-      });
+    isInWatchlist(HERO_COURSE?.courseId)?.then((inList) => {
+      if (inList) setInList(true);
     });
   }, []);
 

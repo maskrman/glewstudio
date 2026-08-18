@@ -7,6 +7,7 @@ import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
 import { getWatchlist, removeFromWatchlist, WatchlistCourse } from '@/lib/watchlist';
 import { useAuth } from '@/contexts/AuthContext';
+import { TIER_LABELS as CONFIG_TIER_LABELS } from '@/lib/config';
 
 type SortOption = 'newest' | 'oldest' | 'title_asc' | 'title_desc' | 'rating';
 type FilterTier = 'all' | 'apertura' | 'obturador' | 'diafragma';
@@ -19,11 +20,12 @@ const SORT_LABELS: Record<SortOption, string> = {
   rating: 'Mejor valorado',
 };
 
-const TIER_LABELS: Record<FilterTier, string> = {
+// Use centralized tier labels from config, extended with 'all'
+const TIER_FILTER_LABELS: Record<FilterTier, string> = {
   all: 'Todos los niveles',
-  apertura: 'Plan Apertura',
-  obturador: 'Plan Obturador',
-  diafragma: 'Plan Diafragma',
+  apertura: CONFIG_TIER_LABELS.apertura,
+  obturador: CONFIG_TIER_LABELS.obturador,
+  diafragma: CONFIG_TIER_LABELS.diafragma,
 };
 
 export default function WatchlistScreen() {
@@ -135,8 +137,8 @@ export default function WatchlistScreen() {
                 onChange={e => setFilterTier(e.target.value as FilterTier)}
                 className="px-3 py-2 bg-muted border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 cursor-pointer"
               >
-                {(Object.keys(TIER_LABELS) as FilterTier[]).map(t => (
-                  <option key={t} value={t}>{TIER_LABELS[t]}</option>
+                {(Object.keys(TIER_FILTER_LABELS) as FilterTier[]).map(t => (
+                  <option key={t} value={t}>{TIER_FILTER_LABELS[t]}</option>
                 ))}
               </select>
 

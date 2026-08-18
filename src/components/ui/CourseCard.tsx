@@ -5,8 +5,7 @@ import Link from 'next/link';
 
 import Icon from '@/components/ui/AppIcon';
 import TierBadge from './TierBadge';
-import { addToWatchlist, removeFromWatchlist } from '@/lib/watchlist';
-import { createClient } from '@/lib/supabase/client';
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist';
 
 interface CourseCardProps {
   id: string;
@@ -43,20 +42,10 @@ export default function CourseCard({
   const [inWatchlist, setInWatchlist] = useState(initialInWatchlist);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
 
-  // Check watchlist status on mount
+  // Check watchlist status on mount using the shared lib helper
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from('watchlist')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setInWatchlist(true);
-        });
+    isInWatchlist(id).then((inList) => {
+      if (inList) setInWatchlist(true);
     });
   }, [id]);
 

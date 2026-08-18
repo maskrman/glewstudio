@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { TIER_RANK, TIER_LABELS } from '@/lib/config';
 
 const DOWNLOAD_URL_EXPIRY_SECONDS = 300; // 5 minutes — short-lived for security
 const BUCKET_NAME = 'lesson-resources';
@@ -119,12 +120,8 @@ export async function generateSignedDownloadUrl(
       return { url: null, error: 'Recurso no encontrado.' };
     }
 
-    // 3. Tier hierarchy for access check
-    const TIER_RANK: Record<string, number> = {
-      apertura: 1,
-      obturador: 2,
-      diafragma: 3,
-    };
+    // 3. Tier hierarchy — imported from @/lib/config (single source of truth)
+    // const TIER_RANK is no longer defined locally
 
     // 4. Check active subscription
     const { data: subscription } = await supabase
@@ -153,11 +150,7 @@ export async function generateSignedDownloadUrl(
     const hasAccess = hasSubscriptionAccess || hasPurchase;
 
     if (!hasAccess) {
-      const tierLabels: Record<string, string> = {
-        obturador: 'Plan Obturador',
-        diafragma: 'Plan Diafragma (Master)',
-      };
-      const requiredLabel = tierLabels[resource.required_tier] ?? resource.required_tier;
+      const requiredLabel = TIER_LABELS[resource.required_tier] ?? resource.required_tier;
       return {
         url: null,
         error: `Acceso denegado. Este recurso requiere ${requiredLabel}.`,

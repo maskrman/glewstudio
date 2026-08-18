@@ -1,5 +1,13 @@
-// Supabase Database Types
-// Generated types for glewstudio-main
+/**
+ * Supabase Database Types — GLEW Studio
+ *
+ * Single source of truth for all database row types.
+ * Keep in sync with supabase/migrations/*.sql
+ *
+ * NOTE: SubscriptionTier and SubscriptionStatus are re-exported from
+ * @/lib/config so that all application code imports from one place.
+ * Do NOT redefine them here — import from @/lib/config instead.
+ */
 
 export type Json =
   | string
@@ -9,6 +17,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// ─── Enum aliases (canonical definitions live in @/lib/config) ────────────────
 export type SubscriptionTier = 'apertura' | 'obturador' | 'diafragma'
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial'
 
@@ -150,6 +159,210 @@ export interface Database {
           completed_at?: string | null
           updated_at?: string
         }
+      }
+      categories: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          cover_image: string | null
+          cover_image_alt: string | null
+          icon: string | null
+          color: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          cover_image?: string | null
+          cover_image_alt?: string | null
+          icon?: string | null
+          color?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          name?: string
+          slug?: string
+          cover_image?: string | null
+          cover_image_alt?: string | null
+          icon?: string | null
+          color?: string | null
+          sort_order?: number
+        }
+      }
+      courses: {
+        Row: {
+          id: string
+          title: string
+          slug: string
+          instructor: string
+          thumbnail: string
+          thumbnail_alt: string
+          duration: string
+          tier?: SubscriptionTier | 'free'
+          access_type: 'free' | 'membership' | 'premium_purchase'
+          minimum_tier: SubscriptionTier | null
+          price: number | null
+          lesson_count: number
+          rating: number | null
+          category_id: string | null
+          is_published: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          slug: string
+          instructor: string
+          thumbnail?: string
+          thumbnail_alt?: string
+          duration?: string
+          tier?: SubscriptionTier | 'free'
+          access_type?: 'free' | 'membership' | 'premium_purchase'
+          minimum_tier?: SubscriptionTier | null
+          price?: number | null
+          lesson_count?: number
+          rating?: number | null
+          category_id?: string | null
+          is_published?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          title?: string
+          slug?: string
+          instructor?: string
+          thumbnail?: string
+          thumbnail_alt?: string
+          duration?: string
+          tier?: SubscriptionTier | 'free'
+          access_type?: 'free' | 'membership' | 'premium_purchase'
+          minimum_tier?: SubscriptionTier | null
+          price?: number | null
+          lesson_count?: number
+          rating?: number | null
+          category_id?: string | null
+          is_published?: boolean
+          updated_at?: string
+        }
+      }
+      otp_codes: {
+        Row: {
+          id: string
+          email: string
+          code: string
+          type: 'signup' | 'recovery'
+          expires_at: string
+          used: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          code: string
+          type?: 'signup' | 'recovery'
+          expires_at: string
+          used?: boolean
+          created_at?: string
+        }
+        Update: {
+          used?: boolean
+        }
+      }
+      course_purchases: {
+        Row: {
+          id: string
+          user_id: string
+          course_id: string
+          price_paid: number | null
+          amount: number | null
+          currency: string | null
+          provider: string | null
+          provider_payment_id: string | null
+          purchase_status: 'paid' | 'pending' | 'refunded' | 'failed'
+          discount_applied: number | null
+          created_at: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          course_id: string
+          price_paid?: number | null
+          amount?: number | null
+          currency?: string | null
+          provider?: string | null
+          provider_payment_id?: string | null
+          purchase_status?: 'paid' | 'pending' | 'refunded' | 'failed'
+          discount_applied?: number | null
+          created_at?: string
+          updated_at?: string | null
+        }
+        Update: {
+          purchase_status?: 'paid' | 'pending' | 'refunded' | 'failed'
+          updated_at?: string | null
+        }
+      }
+      lesson_resources: {
+        Row: {
+          id: string
+          course_id: string
+          lesson_id: string
+          file_name: string
+          display_name: string
+          file_type: string
+          file_size: string | null
+          storage_path: string
+          required_tier: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          lesson_id: string
+          file_name: string
+          display_name: string
+          file_type: string
+          file_size?: string | null
+          storage_path: string
+          required_tier?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          display_name?: string
+          file_type?: string
+          file_size?: string | null
+          storage_path?: string
+          required_tier?: string
+          sort_order?: number
+        }
+      }
+      downloads: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          course_title: string
+          file_type: string
+          file_size: string
+          downloaded_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          course_title: string
+          file_type: string
+          file_size?: string
+          downloaded_at?: string
+        }
+        Update: Record<string, never>
       }
     }
     Views: Record<string, never>
