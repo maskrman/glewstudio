@@ -279,9 +279,9 @@ export default function VideoPlayerScreen() {
 
 
 
+
       // silently fail — don't interrupt the user experience
-    }}, [user]);const handleVideoEnd = useCallback(async () => {if (progressFiredRef.current) return;
-      progressFiredRef.current = true;
+    }}, [user]);const handleVideoEnd = useCallback(async () => {if (progressFiredRef.current) return;progressFiredRef.current = true;
       setPlaying(false);
       setLessonCompleted(true);
       await fireProgressUpdate(false);

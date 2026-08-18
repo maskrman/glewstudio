@@ -222,6 +222,21 @@ CREATE TABLE IF NOT EXISTS public.course_purchases (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Ensure all non-typed columns exist (safe for tables created in prior partial runs)
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS course_id UUID REFERENCES public.courses(id) ON DELETE RESTRICT;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2);
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'USD';
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'demo';
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS discount_applied NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS original_price NUMERIC(10,2);
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE public.course_purchases ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+
 -- Add typed column after type is created
 ALTER TABLE public.course_purchases
     ADD COLUMN IF NOT EXISTS purchase_status public.purchase_status NOT NULL DEFAULT 'pending'::public.purchase_status;
