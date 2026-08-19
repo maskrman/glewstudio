@@ -150,7 +150,7 @@ export async function generateSignedDownloadUrl(
 
     // 5. Evaluate access
     const userTierRank = subscription ? (TIER_RANK[subscription.tier] ?? 0) : 0;
-    const requiredTierRank = TIER_RANK[resource.required_tier] ?? 1;
+    const requiredTierRank = TIER_RANK[resource.required_tier] ?? 0;
     const hasSubscriptionAccess = !!subscription && userTierRank >= requiredTierRank;
     const hasAccess = hasSubscriptionAccess || hasPaidPurchase;
 
