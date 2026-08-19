@@ -13,6 +13,26 @@
  * IMPORTANT: These tests use the Supabase anon/user client — NOT service-role.
  * This means the storage policies are evaluated exactly as they would be
  * for a real user request.
+ *
+ * AUTHORIZATION:
+ * runStorageAudit() is an administrative function that uses the Supabase
+ * Service Role client (bypasses RLS) to query audit data. It MUST only be
+ * callable by authenticated administrators.
+ *
+ * Authorization is enforced at the start of runStorageAudit():
+ *   1. User must be authenticated (auth.getUser() must return a valid user).
+ *   2. User must be an administrator as determined by the secure server-side
+ *      RPC call to public.is_admin(), which reads ONLY raw_app_meta_data.role.
+ *      raw_user_meta_data is intentionally NOT checked — it is user-writable
+ *      and cannot be trusted for authorization decisions.
+ *
+ * LESSON-RESOURCES STORAGE POLICY:
+ * The lesson-resources bucket uses the policy lesson_resources_tier_select,
+ * whose USING expression calls:
+ *   public.user_can_access_lesson_resource(name)
+ * This function reads lesson_resources.required_tier (NOT courses.minimum_tier)
+ * and compares it against the user's subscription tier or paid purchase status.
+ * The function is SECURITY DEFINER with SET search_path = public, auth, extensions.
  */
 
 import { createClient } from '@/lib/supabase/server';
@@ -232,6 +252,12 @@ async function findDiafragmaResource(): Promise<{
 /**
  * Main audit function: runs all 6 storage bypass tests.
  *
+ * AUTHORIZATION REQUIRED: The caller must be an authenticated administrator.
+ * Admin status is determined exclusively by public.is_admin() via RPC, which
+ * reads raw_app_meta_data.role = 'admin'. raw_user_meta_data is NOT consulted.
+ *
+ * No Service Role queries are executed before the authorization check passes.
+ *
  * IMPORTANT: This function must be called while authenticated as the user
  * being tested. The tests use the current user's credentials.
  *
@@ -241,6 +267,55 @@ async function findDiafragmaResource(): Promise<{
  * 3. As a user with a paid purchase (for test D)
  */
 export async function runStorageAudit(): Promise<StorageAuditReport> {
+  // ── STEP 1: AUTHENTICATION CHECK ─────────────────────────────────────────
+  // Obtain the authenticated user via the secure server-side client.
+  // This uses the session cookie — no client-supplied userId is trusted.
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      timestamp: new Date().toISOString(),
+      totalTests: 0,
+      passed: 0,
+      failed: 0,
+      skipped: 0,
+      results: [],
+      policyDocumentation: {} as PolicyDocumentation,
+      overallStatus: 'FAIL',
+      error: 'No autenticado',
+    } as StorageAuditReport & { error: string };
+  }
+
+  // ── STEP 2: ADMIN AUTHORIZATION CHECK ────────────────────────────────────
+  // Call public.is_admin() via RPC — the single source of truth for admin status.
+  // is_admin() reads ONLY raw_app_meta_data.role = 'admin' (set server-side).
+  // raw_user_meta_data is intentionally NOT checked (user-writable, untrusted).
+  // No client-supplied role parameter is accepted.
+  const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin');
+
+  if (adminCheckError || !isAdmin) {
+    return {
+      timestamp: new Date().toISOString(),
+      totalTests: 0,
+      passed: 0,
+      failed: 0,
+      skipped: 0,
+      results: [],
+      policyDocumentation: {} as PolicyDocumentation,
+      overallStatus: 'FAIL',
+      error: 'Acceso denegado',
+    } as StorageAuditReport & { error: string };
+  }
+
+  // ── AUTHORIZATION PASSED ──────────────────────────────────────────────────
+  // Only after both checks pass do we proceed with Service Role queries.
+  // createAdminClient() (Service Role) is NOT called before this point.
+
   const timestamp = new Date().toISOString();
   const results: AuditTestResult[] = [];
 
@@ -280,16 +355,29 @@ Policy name: lesson_resources_tier_select
 Operation: FOR SELECT TO authenticated
 USING expression:
   bucket_id = 'lesson-resources'
-  AND (
-    public.is_admin()
-    OR public.user_can_access_course_content(
-         split_part(name, '/', 1)::UUID
-       )
-  )
+  AND public.user_can_access_lesson_resource(name)
 
-Same helper function as videos bucket.
-Path format: <courseId>/<lessonId>/<fileName>
-courseId extracted from first path segment.
+Helper function user_can_access_lesson_resource(p_storage_path TEXT):
+  1. v_user_id := auth.uid() — must not be NULL
+  2. v_course_id := split_part(p_storage_path, '/', 1)::UUID
+     (raises exception if first segment is not a valid UUID → RETURN FALSE)
+  3. SELECT required_tier FROM lesson_resources
+     WHERE storage_path = p_storage_path AND course_id::TEXT = v_course_id::TEXT
+     (NOT FOUND or required_tier IS NULL → RETURN FALSE)
+  4. IF public.is_admin() → RETURN TRUE
+  5. v_required_rank := get_tier_rank(required_tier)
+     (unknown tier → rank 0 → RETURN FALSE)
+  6. SELECT tier FROM subscriptions WHERE user_id = auth.uid() AND status = 'active'
+  7. IF get_tier_rank(user_tier) >= v_required_rank → RETURN TRUE
+  8. IF EXISTS (course_purchases WHERE user_id = auth.uid() AND course_id = v_course_id
+               AND purchase_status = 'paid') → RETURN TRUE
+  9. RETURN FALSE
+
+Key difference from videos bucket:
+  - lesson-resources uses lesson_resources.required_tier (per-resource tier)
+  - videos uses courses.minimum_tier (per-course tier)
+  - lesson_resources.required_tier is the sole source of truth for resource access
+Path format: <courseId UUID>/<lessonId>/<fileName>
     `.trim(),
 
     usingExpressionVideos: `
@@ -306,12 +394,13 @@ WITH CHECK: Not applicable (SELECT only policy)
     usingExpressionLessonResources: `
 USING (
   bucket_id = 'lesson-resources'
-  AND (
-    public.is_admin()
-    OR public.user_can_access_course_content(split_part(name, '/', 1)::UUID)
-  )
+  AND public.user_can_access_lesson_resource(name)
 )
 WITH CHECK: Not applicable (SELECT only policy)
+
+Note: user_can_access_lesson_resource(name) reads lesson_resources.required_tier,
+NOT courses.minimum_tier. The function is SECURITY DEFINER with
+SET search_path = public, auth, extensions.
     `.trim(),
 
     helperFunctionLogic: `
@@ -319,7 +408,24 @@ get_tier_rank(tier TEXT) → INTEGER:
   'apertura'  → 1 'obturador'→ 2 'diafragma' → 3
   other       → 0
 
-user_can_access_course_content(courseId UUID) → BOOLEAN:
+user_can_access_lesson_resource(p_storage_path TEXT) → BOOLEAN:
+  Step 1: auth.uid() must not be NULL (authenticated)
+  Step 2: v_course_id := split_part(p_storage_path, '/', 1)::UUID
+          (invalid UUID → exception → RETURN FALSE)
+  Step 3: SELECT required_tier FROM lesson_resources
+          WHERE storage_path = p_storage_path AND course_id::TEXT = v_course_id::TEXT
+          (NOT FOUND or NULL → RETURN FALSE)
+  Step 4: IF public.is_admin() → RETURN TRUE
+  Step 5: v_required_rank := get_tier_rank(required_tier)
+          IF v_required_rank = 0 → RETURN FALSE (unknown tier → fail-closed)
+  Step 6: subscriptions WHERE user_id = auth.uid() AND status = 'active' → tier
+  Step 7: IF get_tier_rank(user_tier) >= v_required_rank → RETURN TRUE
+  Step 8: course_purchases WHERE user_id = auth.uid() AND course_id = v_course_id
+          AND purchase_status = 'paid' → RETURN TRUE
+  Step 9: RETURN FALSE
+  EXCEPTION WHEN OTHERS → RETURN FALSE (fully fail-closed)
+
+user_can_access_course_content(courseId UUID) → BOOLEAN (videos bucket only):
   Step 1: auth.uid() must not be NULL (authenticated)
   Step 2: courses WHERE id = courseId AND is_published = TRUE → minimum_tier
   Step 3: IF minimum_tier IS NULL → TRUE (free course, any authenticated user)
@@ -332,21 +438,25 @@ user_can_access_course_content(courseId UUID) → BOOLEAN:
     `.trim(),
 
     whyAperturaCannotReadDiafragma: `
-Apertura user attempting to access Diafragma object:
+Apertura user attempting to access Diafragma lesson resource:
 
-1. Object path: <diafragma_course_id>/lesson1.mp4
-2. split_part(name, '/', 1) = <diafragma_course_id>
-3. courses WHERE id = <diafragma_course_id> → minimum_tier = 'diafragma' 4. get_tier_rank('diafragma') = 3
-5. subscriptions WHERE user_id = auth.uid() AND status = 'active'→ tier = 'apertura' 6. get_tier_rank('apertura') = 1
-7. 1 >= 3 → FALSE (tier check fails)
-8. course_purchases WHERE purchase_status = 'paid' → no rows (no purchase)
-9. user_can_access_course_content() → FALSE
-10. USING expression = FALSE
-11. Supabase Storage → HTTP 400/403 (access denied by RLS policy)
+1. Object path: <course_uuid>/lesson-004/file.pdf
+2. user_can_access_lesson_resource('<course_uuid>/lesson-004/file.pdf') is called
+3. v_course_id := split_part(path, '/', 1)::UUID → <course_uuid>
+4. SELECT required_tier FROM lesson_resources WHERE storage_path = path
+   AND course_id::TEXT = '<course_uuid>' → required_tier = 'diafragma'
+5. is_admin() → FALSE (apertura user)
+6. get_tier_rank('diafragma') = 3
+7. subscriptions WHERE user_id = auth.uid() AND status = 'active'→ tier = 'apertura' 8. get_tier_rank('apertura') = 1
+9. 1 >= 3 → FALSE (tier check fails)
+10. course_purchases WHERE purchase_status = 'paid' → no rows (no purchase)
+11. user_can_access_lesson_resource() → FALSE
+12. USING expression = FALSE
+13. Supabase Storage → HTTP 400/403 (access denied by RLS policy)
 
-The policy evaluates the ACTUAL object path, not a user-supplied value.
-Path manipulation (substituting a Diafragma courseId) does not help:
-the policy will still check Diafragma's minimum_tier and deny Apertura access.
+The policy evaluates lesson_resources.required_tier directly — NOT courses.minimum_tier.
+This closes the original bypass where a course with minimum_tier=apertura could grant
+access to resources with required_tier=diafragma.
     `.trim(),
   };
 
