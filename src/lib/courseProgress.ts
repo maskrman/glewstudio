@@ -40,28 +40,29 @@ export interface CourseProgressPayload {
 }
 
 /**
- * Upserts a course_progress row for the given user+course.
+ * Upserts a course_progress row for the authenticated user.
  * - Increments watched_seconds by additionalSeconds
- * - user_id is taken from payload.userId but the server-side action
- *   always overrides with the session user
+ * - user_id is ALWAYS derived from the current authenticated session.
+ *   payload.userId is IGNORED — it is kept in the interface for backward
+ *   compatibility only and must NOT be used as the identity authority.
  *
- * SECURITY NOTE (Phase 2 Final Audit):
+ * SECURITY NOTE (Phase 2 Closure — Issue #16):
+ * - user_id is obtained from supabase.auth.getUser() (server-side session)
+ * - payload.userId is NOT used for any DB operation
  * - additionalSeconds is validated: must be >= 0 and <= MAX_ADDITIONAL_SECONDS (7200)
  * - totalSeconds is validated: must be >= 0 and <= MAX_TOTAL_SECONDS (86400)
  * - The client-sent totalSeconds is NOT used for authorization, certificate issuance,
  *   or subscription tier verification. It is ONLY used for progress percentage display.
- * - When courses.lesson_duration_seconds is populated in DB, saveVideoProgress()
- *   server action uses that value as the authoritative totalSeconds instead.
  * - Passing completed=true from this client-side function will be REJECTED
  *   by the prevent_self_completion database trigger.
  * - Use the saveVideoProgress() server action instead for completion tracking.
  * - This function is safe for progress updates (watched_seconds, total_seconds).
  *
  * AUTHORIZATION INVARIANT:
+ *   user_id → always from supabase.auth.getUser() session (never from payload)
  *   totalSeconds (client-sent) → display only, never used for access control
  *   watched_seconds → display only, never used for access control
  *   completed → set server-side only via saveVideoProgress() with service-role key
- *   user_id → always from server-side session in saveVideoProgress()
  */
 export async function updateCourseProgress(payload: CourseProgressPayload): Promise<void> {
   // ─── HALLAZGO 4C FIX ──────────────────────────────────────────────────────
@@ -103,11 +104,22 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
 
   const supabase = createClient();
 
+  // ─── ISSUE #16 FIX: Derive identity from session, NOT from payload.userId ──
+  // payload.userId is an untrusted client-supplied value.
+  // The authoritative user identity MUST come from the authenticated session.
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.warn('[updateCourseProgress] No authenticated session — skipping DB write.');
+    return;
+  }
+  const sessionUserId = user.id;
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Fetch existing row first so we can increment watched_seconds correctly
   const { data: existing } = await supabase
     .from('course_progress')
     .select('id, watched_seconds, completed')
-    .eq('user_id', payload.userId)
+    .eq('user_id', sessionUserId)
     .eq('course_id', payload.courseId)
     .maybeSingle();
 
@@ -128,7 +140,7 @@ export async function updateCourseProgress(payload: CourseProgressPayload): Prom
   }
 
   const upsertData: Record<string, unknown> = {
-    user_id: payload.userId,
+    user_id: sessionUserId,  // Always from session — payload.userId is IGNORED
     course_id: payload.courseId,
     course_title: payload.courseTitle,
     course_instructor: payload.courseInstructor,
