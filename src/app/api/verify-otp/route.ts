@@ -78,14 +78,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if max attempts exceeded
+    // Check if max attempts already exceeded (pre-check before atomic increment)
     const currentAttempts = otpRecord.attempt_count ?? 0;
     if (currentAttempts >= MAX_ATTEMPTS_PER_OTP) {
-      // Invalidate the OTP
+      // Ensure invalidated (idempotent)
       await supabaseAdmin
         .from('otp_codes')
         .update({ invalidated_at: new Date().toISOString() })
-        .eq('id', otpRecord.id);
+        .eq('id', otpRecord.id)
+        .is('invalidated_at', null);
 
       return NextResponse.json(
         { error: 'Demasiados intentos fallidos. Solicita un nuevo código.' },
@@ -95,21 +96,46 @@ export async function POST(req: NextRequest) {
 
     // Verify the code matches
     if (otpRecord.code !== String(code)) {
-      // Increment attempt_count on failure
-      const newAttemptCount = currentAttempts + 1;
-      const updatePayload: Record<string, unknown> = { attempt_count: newAttemptCount };
+      // RACE CONDITION FIX (Phase 2 Audit — Issue #4B):
+      // Use atomic DB function increment_otp_attempt() which performs a single
+      // UPDATE with WHERE attempt_count < max_attempts in one DB operation.
+      // This prevents concurrent requests from both reading the same count
+      // and both incrementing to the same value, bypassing MAX_ATTEMPTS_PER_OTP.
+      const { data: incrementResult, error: incrementError } = await supabaseAdmin
+        .rpc('increment_otp_attempt', {
+          p_otp_id: otpRecord.id,
+          p_max_attempts: MAX_ATTEMPTS_PER_OTP,
+        })
+        .maybeSingle();
 
-      // Invalidate if max attempts reached after this failure
-      if (newAttemptCount >= MAX_ATTEMPTS_PER_OTP) {
-        updatePayload.invalidated_at = new Date().toISOString();
+      if (incrementError) {
+        console.error('[verify-otp] increment_otp_attempt error:', incrementError.message);
+        // Fallback: treat as max attempts reached to be safe
+        return NextResponse.json(
+          { error: 'Código incorrecto o expirado. Verifica e intenta de nuevo.' },
+          { status: 400, headers: corsHeaders }
+        );
       }
 
-      await supabaseAdmin
-        .from('otp_codes')
-        .update(updatePayload)
-        .eq('id', otpRecord.id);
+      const result = incrementResult as { new_count: number; was_incremented: boolean; should_invalidate: boolean } | null;
+      const newCount = result?.new_count ?? MAX_ATTEMPTS_PER_OTP;
+      const shouldInvalidate = result?.should_invalidate ?? true;
 
-      const remainingAttempts = MAX_ATTEMPTS_PER_OTP - newAttemptCount;
+      // Invalidate OTP if max attempts reached
+      if (shouldInvalidate) {
+        await supabaseAdmin
+          .from('otp_codes')
+          .update({ invalidated_at: new Date().toISOString() })
+          .eq('id', otpRecord.id)
+          .is('invalidated_at', null); // Idempotent: only invalidate once
+
+        return NextResponse.json(
+          { error: 'Demasiados intentos fallidos. Solicita un nuevo código.' },
+          { status: 429, headers: corsHeaders }
+        );
+      }
+
+      const remainingAttempts = MAX_ATTEMPTS_PER_OTP - newCount;
       const errorMsg = remainingAttempts > 0
         ? `Código incorrecto. Te quedan ${remainingAttempts} intento(s).`
         : 'Demasiados intentos fallidos. Solicita un nuevo código.';

@@ -6,12 +6,24 @@ import {
   hasAccess,
   TIER_LABELS,
   TIER_RANK,
+  MEMBERSHIP_PRICES,
   type SubscriptionTier,
 } from '@/lib/config';
 
 // Re-export real implementations from lib/config (single source of truth)
 export { hasAccess, TIER_LABELS, TIER_RANK };
 export type { SubscriptionTier };
+
+/**
+ * Formatted price strings derived from MEMBERSHIP_PRICES (lib/config.ts).
+ * lib/config.ts is the SINGLE source of truth for pricing.
+ * This record is derived — never hardcoded independently.
+ */
+export const TIER_PRICES: Record<string, string> = {
+  apertura: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`,
+  obturador: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`,
+  diafragma: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`,
+};
 
 export interface UserPlan {
   tier: SubscriptionTier | null;
@@ -81,6 +93,3 @@ export function useUserPlan(): UserPlan {
 
   return { tier, status, expiresAt, isActive, isLoading, error };
 }
-const TIER_PRICES: any = null;
-
-export { TIER_PRICES };

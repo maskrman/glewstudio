@@ -219,26 +219,49 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ── Step 6: Idempotency check — reject duplicate events ───────────────────
-  const { data: existingEvent, error: idempotencyError } = await supabaseAdmin
+  // ── Step 6: Atomic idempotency — claim the event with INSERT ON CONFLICT DO NOTHING ──
+  // RACE CONDITION FIX (Phase 2 Audit — Issue #4A):
+  // The previous SELECT → check → UPDATE → INSERT pattern had a race condition:
+  // two simultaneous requests could both pass the SELECT before either INSERT.
+  //
+  // Solution: INSERT the event record FIRST with ON CONFLICT DO NOTHING.
+  // Only the request that successfully inserts the row (insert_count = 1) proceeds.
+  // Any concurrent duplicate request gets insert_count = 0 and is rejected immediately.
+  // This is atomic at the DB level — no race condition possible.
+  const { count: insertCount, error: idempotencyInsertError } = await supabaseAdmin
     .from('processed_webhook_events')
-    .select('id, processed_at')
-    .eq('provider_event_id', provider_event_id)
-    .maybeSingle();
+    .insert({
+      provider_event_id,
+      event_type: event,
+      user_id,
+      processed_at: new Date().toISOString(),
+      metadata: {
+        provider_product_id: provider_product_id ?? null,
+        resolved_tier: resolvedTier,
+        mapped_status: null, // will be updated after processing
+      },
+    }, { count: 'exact' })
+    .select()
+    .limit(0);
 
-  if (idempotencyError) {
-    console.error('[webhook] idempotency check error:', idempotencyError.message);
+  // If insert failed due to unique constraint → duplicate event
+  if (idempotencyInsertError) {
+    if (
+      idempotencyInsertError.code === '23505' || // unique_violation
+      idempotencyInsertError.message?.includes('duplicate') ||
+      idempotencyInsertError.message?.includes('unique')
+    ) {
+      console.log(
+        `[webhook] Duplicate event rejected (atomic INSERT conflict): provider_event_id=${provider_event_id}`
+      );
+      return NextResponse.json(
+        { received: true, duplicate: true, message: 'Event already processed' },
+        { status: 200 }
+      );
+    }
+    // Unexpected DB error
+    console.error('[webhook] idempotency insert error:', idempotencyInsertError.message);
     return NextResponse.json({ error: 'Internal error during idempotency check' }, { status: 500 });
-  }
-
-  if (existingEvent) {
-    console.log(
-      `[webhook] Duplicate event rejected: provider_event_id=${provider_event_id} (already processed at ${existingEvent.processed_at})`
-    );
-    return NextResponse.json(
-      { received: true, duplicate: true, message: 'Event already processed' },
-      { status: 200 }
-    );
   }
 
   // ── Step 7: Validate user exists in auth.users ────────────────────────────
@@ -246,6 +269,11 @@ export async function POST(req: NextRequest) {
 
   if (userError || !authUser?.user) {
     console.warn(`[webhook] Rejected: user_id=${user_id} not found in auth.users`);
+    // Clean up the idempotency record since we're rejecting this event
+    await supabaseAdmin
+      .from('processed_webhook_events')
+      .delete()
+      .eq('provider_event_id', provider_event_id);
     return NextResponse.json(
       { error: `User not found: ${user_id}` },
       { status: 400 }
@@ -320,25 +348,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Step 10: Record event as processed (idempotency) ──────────────────────
-  const { error: recordError } = await supabaseAdmin
+  // ── Step 10: Update idempotency record with final mapped_status ───────────
+  // The record was already inserted in Step 6 (atomic claim).
+  // Now update it with the resolved processing result.
+  await supabaseAdmin
     .from('processed_webhook_events')
-    .insert({
-      provider_event_id,
-      event_type: event,
-      user_id,
-      processed_at: new Date().toISOString(),
+    .update({
       metadata: {
         provider_product_id: provider_product_id ?? null,
         resolved_tier: resolvedTier,
         mapped_status: mappedStatus,
       },
-    });
-
-  if (recordError) {
-    // Non-fatal: subscription was already updated. Log and continue.
-    console.error('[webhook] failed to record processed event:', recordError.message);
-  }
+    })
+    .eq('provider_event_id', provider_event_id);
 
   console.log(
     `[webhook] processed: event="${event}" provider_event_id=${provider_event_id} ` +

@@ -172,13 +172,13 @@ export async function generateSignedVideoUrl(
  *   used with clamping (max MAX_TOTAL_SECONDS). The client-sent value is NEVER
  *   used for authorization, certificate issuance, or tier verification.
  *
- * SECURITY NOTE (Phase 2 Final Audit):
- *   - totalSeconds from client is NOT used for authorization or certificates
- *   - When courses.lesson_duration_seconds is populated in DB, it overrides client value
- *   - additionalSeconds validated >= 0 and <= 7200 (2h per session)
- *   - user_id always from session, never from payload
- *   - completed=true can only be set via markComplete=true in this server action,
- *     which uses the service-role admin client to bypass the prevent_self_completion trigger
+ * SECURITY NOTE (Phase 2 Audit — Issue #1):
+ *   - markComplete=true from client is NEVER sufficient on its own.
+ *   - The server verifies: watched_seconds >= completion_threshold BEFORE setting completed=true.
+ *   - completion_threshold = courses.completion_threshold_seconds (DB) or 80% of totalSeconds.
+ *   - If the threshold is not met → 403 error, completed is NOT modified.
+ *   - The prevent_self_completion trigger remains as a second line of defense.
+ *   - user_id always from session, never from payload.
  */
 export interface SaveProgressPayload {
   courseId: string;
@@ -190,6 +190,9 @@ export interface SaveProgressPayload {
   totalSeconds?: number;
   markComplete?: boolean;
 }
+
+// Completion threshold: 80% of total duration (used when DB value is absent)
+const DEFAULT_COMPLETION_THRESHOLD_PCT = 0.8;
 
 export async function saveVideoProgress(payload: SaveProgressPayload): Promise<{ success: boolean; error?: string }> {
   try {
@@ -214,19 +217,24 @@ export async function saveVideoProgress(payload: SaveProgressPayload): Promise<{
       return { success: false, error: `additionalSeconds no puede exceder ${MAX_ADDITIONAL_SECONDS} segundos por sesión.` };
     }
 
-    // Determine authoritative totalSeconds:
-    // 1. Try to fetch lesson_duration_seconds from DB (server-side authority)
+    // Determine authoritative totalSeconds and completion_threshold from DB:
+    // 1. Try to fetch lesson_duration_seconds and completion_threshold_seconds from DB
     // 2. Fall back to client-sent totalSeconds (clamped) if DB value not available
     // SECURITY: client-sent totalSeconds is NEVER used for authorization or certificates
     let authoritativeTotalSeconds: number | null = null;
+    let dbCompletionThreshold: number | null = null;
+
     if (payload.courseId) {
       const { data: courseRow } = await supabase
         .from('courses')
-        .select('lesson_duration_seconds')
+        .select('lesson_duration_seconds, completion_threshold_seconds')
         .eq('id', payload.courseId)
         .maybeSingle();
       if (courseRow?.lesson_duration_seconds && courseRow.lesson_duration_seconds > 0) {
         authoritativeTotalSeconds = courseRow.lesson_duration_seconds;
+      }
+      if (courseRow?.completion_threshold_seconds && courseRow.completion_threshold_seconds > 0) {
+        dbCompletionThreshold = courseRow.completion_threshold_seconds;
       }
     }
 
@@ -255,6 +263,45 @@ export async function saveVideoProgress(payload: SaveProgressPayload): Promise<{
     const alreadyCompleted = existing?.completed ?? false;
     const markComplete = payload.markComplete === true;
 
+    // ── SERVER-SIDE COMPLETION VALIDATION (Issue #1) ──────────────────────────
+    // The client CANNOT decide that a course is completed.
+    // The server must verify that watched_seconds >= completion_threshold.
+    //
+    // Threshold resolution order:
+    //   1. courses.completion_threshold_seconds (DB — authoritative)
+    //   2. 80% of authoritativeTotalSeconds (DB duration × 0.8)
+    //   3. 80% of clampedTotalSeconds (client fallback × 0.8)
+    //
+    // If markComplete=true but threshold is not met → return 403 error.
+    // completed is NOT modified.
+    if (markComplete && !alreadyCompleted) {
+      let completionThreshold: number;
+
+      if (dbCompletionThreshold !== null) {
+        // DB has explicit threshold — use it (most authoritative)
+        completionThreshold = dbCompletionThreshold;
+      } else if (authoritativeTotalSeconds !== null) {
+        // DB has duration but no explicit threshold — use 80% of DB duration
+        completionThreshold = Math.floor(authoritativeTotalSeconds * DEFAULT_COMPLETION_THRESHOLD_PCT);
+      } else if (clampedTotalSeconds > 0) {
+        // No DB duration — use 80% of client-sent (clamped) total
+        completionThreshold = Math.floor(clampedTotalSeconds * DEFAULT_COMPLETION_THRESHOLD_PCT);
+      } else {
+        // No duration information at all — require at least 1 second to prevent
+        // zero-second completion abuse
+        completionThreshold = 1;
+      }
+
+      // Verify: newWatchedSeconds (after this session) must meet threshold
+      if (newWatchedSeconds < completionThreshold) {
+        return {
+          success: false,
+          error: `Progreso insuficiente para completar el curso. Se requieren al menos ${completionThreshold}s visto (actual: ${newWatchedSeconds}s).`,
+        };
+      }
+    }
+    // ── END COMPLETION VALIDATION ─────────────────────────────────────────────
+
     const upsertData: Record<string, unknown> = {
       user_id: user.id,           // Always from session — never from payload
       course_id: payload.courseId,
@@ -278,6 +325,7 @@ export async function saveVideoProgress(payload: SaveProgressPayload): Promise<{
     // When marking complete, use the service-role admin client to bypass the
     // prevent_self_completion trigger (which blocks session-based completion writes).
     // Authentication has already been verified above via the user session client.
+    // The completion threshold has been validated server-side above.
     const writeClient = (markComplete && !alreadyCompleted)
       ? createAdminClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
