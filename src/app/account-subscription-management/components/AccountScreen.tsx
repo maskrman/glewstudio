@@ -36,7 +36,7 @@ interface DownloadRow {
   downloaded_at: string;
 }
 
-type AccountSection = 'perfil' | 'suscripcion' | 'progreso' | 'descargas' | 'certificados';
+type AccountSection = 'perfil' | 'suscripcion' | 'facturacion' | 'progreso' | 'descargas' | 'certificados';
 
 // ─── Account Screen ───────────────────────────────────────────────────────────
 
@@ -134,6 +134,7 @@ export default function AccountScreen() {
   const navItems: { id: AccountSection; label: string; icon: string }[] = [
     { id: 'perfil', label: 'Perfil', icon: 'UserCircleIcon' },
     { id: 'suscripcion', label: 'Suscripción', icon: 'CreditCardIcon' },
+    { id: 'facturacion', label: 'Facturación', icon: 'ReceiptPercentIcon' },
     { id: 'progreso', label: 'Mi Progreso', icon: 'ChartBarIcon' },
     { id: 'descargas', label: 'Descargas', icon: 'ArrowDownTrayIcon' },
     { id: 'certificados', label: 'Certificados', icon: 'TrophyIcon' },
@@ -646,6 +647,38 @@ export default function AccountScreen() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── BILLING (COMING SOON) ── */}
+            {section === 'facturacion' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Facturación</h2>
+                {/* 
+                  ARCHITECTURE NOTE (Phase 9):
+                  This section is reserved for future billing integration.
+                  When payments are implemented (Phase 9), connect:
+                    - payments table (payment records)
+                    - payment_events table (webhook events)
+                    - subscriptions table (billing cycle, renewal dates)
+                    - course_purchases table (one-time purchases)
+                  Do NOT add mock data here. Real data only when payments are live.
+                */}
+                <div className="glass-card rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Icon name="ReceiptPercentIcon" size={28} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-700 text-foreground mb-2">Facturación — Próximamente</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      El historial de pagos, facturas y recibos estarán disponibles cuando se active el sistema de pagos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 px-4 py-2 rounded-lg bg-muted/50 border border-border">
+                    <Icon name="LockClosedIcon" size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Disponible en una próxima actualización</span>
+                  </div>
+                </div>
               </div>
             )}
 

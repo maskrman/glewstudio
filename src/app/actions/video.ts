@@ -167,14 +167,18 @@ export async function generateSignedVideoUrl(
  * Upserts a course_progress row for the authenticated user.
  * - user_id is ALWAYS derived from the server-side session (never from client input)
  * - additionalSeconds is validated: must be >= 0 and <= MAX_ADDITIONAL_SECONDS
- * - totalSeconds is validated: must be >= 0 and <= MAX_TOTAL_SECONDS
- * - course_title, course_instructor, course_thumbnail are accepted from payload
- *   but user_id is always overridden with the session user
+ * - totalSeconds: when courses.lesson_duration_seconds is set in DB, that value
+ *   is used as the authoritative total. Otherwise, client-sent totalSeconds is
+ *   used with clamping (max MAX_TOTAL_SECONDS). The client-sent value is NEVER
+ *   used for authorization, certificate issuance, or tier verification.
  *
- * SECURITY FIX (Audit Phase 2, Issue #6):
+ * SECURITY NOTE (Phase 2 Final Audit):
+ *   - totalSeconds from client is NOT used for authorization or certificates
+ *   - When courses.lesson_duration_seconds is populated in DB, it overrides client value
  *   - additionalSeconds validated >= 0 and <= 7200 (2h per session)
- *   - totalSeconds validated >= 0 and <= 86400 (24h max)
  *   - user_id always from session, never from payload
+ *   - completed=true can only be set via markComplete=true in this server action,
+ *     which uses the service-role admin client to bypass the prevent_self_completion trigger
  */
 export interface SaveProgressPayload {
   courseId: string;
@@ -210,14 +214,33 @@ export async function saveVideoProgress(payload: SaveProgressPayload): Promise<{
       return { success: false, error: `additionalSeconds no puede exceder ${MAX_ADDITIONAL_SECONDS} segundos por sesión.` };
     }
 
-    // Validate totalSeconds
-    const totalSeconds = payload.totalSeconds !== undefined
+    // Determine authoritative totalSeconds:
+    // 1. Try to fetch lesson_duration_seconds from DB (server-side authority)
+    // 2. Fall back to client-sent totalSeconds (clamped) if DB value not available
+    // SECURITY: client-sent totalSeconds is NEVER used for authorization or certificates
+    let authoritativeTotalSeconds: number | null = null;
+    if (payload.courseId) {
+      const { data: courseRow } = await supabase
+        .from('courses')
+        .select('lesson_duration_seconds')
+        .eq('id', payload.courseId)
+        .maybeSingle();
+      if (courseRow?.lesson_duration_seconds && courseRow.lesson_duration_seconds > 0) {
+        authoritativeTotalSeconds = courseRow.lesson_duration_seconds;
+      }
+    }
+
+    // If DB has no lesson_duration_seconds, use client-sent value with clamping
+    // This value is ONLY used for progress percentage display — NOT for authorization
+    const clientTotalSeconds = payload.totalSeconds !== undefined
       ? Math.floor(Number(payload.totalSeconds))
       : 0;
-    if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
-      return { success: false, error: 'totalSeconds debe ser un número no negativo.' };
-    }
-    const clampedTotalSeconds = Math.min(totalSeconds, MAX_TOTAL_SECONDS);
+    const clampedTotalSeconds = authoritativeTotalSeconds !== null
+      ? authoritativeTotalSeconds
+      : Math.min(
+          Math.max(0, Number.isFinite(clientTotalSeconds) ? clientTotalSeconds : 0),
+          MAX_TOTAL_SECONDS
+        );
 
     // Fetch existing row to increment watched_seconds correctly
     const { data: existing } = await supabase

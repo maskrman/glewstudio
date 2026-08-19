@@ -33,13 +33,23 @@ export interface CourseProgressPayload {
  * - user_id is taken from payload.userId but the server-side action
  *   always overrides with the session user
  *
- * SECURITY NOTE (Phase 2 Audit Corrections):
- * - additionalSeconds is validated: must be >= 0 and <= MAX_ADDITIONAL_SECONDS
- * - totalSeconds is validated: must be >= 0 and <= MAX_TOTAL_SECONDS
+ * SECURITY NOTE (Phase 2 Final Audit):
+ * - additionalSeconds is validated: must be >= 0 and <= MAX_ADDITIONAL_SECONDS (7200)
+ * - totalSeconds is validated: must be >= 0 and <= MAX_TOTAL_SECONDS (86400)
+ * - The client-sent totalSeconds is NOT used for authorization, certificate issuance,
+ *   or subscription tier verification. It is ONLY used for progress percentage display.
+ * - When courses.lesson_duration_seconds is populated in DB, saveVideoProgress()
+ *   server action uses that value as the authoritative totalSeconds instead.
  * - Passing completed=true from this client-side function will be REJECTED
  *   by the prevent_self_completion database trigger.
  * - Use the saveVideoProgress() server action instead for completion tracking.
  * - This function is safe for progress updates (watched_seconds, total_seconds).
+ *
+ * AUTHORIZATION INVARIANT:
+ *   totalSeconds (client-sent) → display only, never used for access control
+ *   watched_seconds → display only, never used for access control
+ *   completed → set server-side only via saveVideoProgress() with service-role key
+ *   user_id → always from server-side session in saveVideoProgress()
  */
 export async function updateCourseProgress(payload: CourseProgressPayload): Promise<void> {
   // Validate additionalSeconds
