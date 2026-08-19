@@ -195,17 +195,16 @@ async function getCurrentUserTier(): Promise<{
 /**
  * Finds a Diafragma course and an Apertura course from the database.
  * Used to construct real storage paths for testing.
+ *
+ * SECURITY: Accepts the admin client as a parameter — it must be created
+ * AFTER the authorization check in runStorageAudit(). This function does
+ * NOT create its own admin client, preventing it from being called without
+ * a prior authorization boundary.
  */
-async function findTestCourses(): Promise<{
+async function findTestCourses(supabaseAdmin: ReturnType<typeof createAdminClient>): Promise<{
   diafragmaCourse: { id: string; title: string; minimum_tier: string } | null;
   aperturaCourse: { id: string; title: string; minimum_tier: string } | null;
 }> {
-  // Use admin client to read courses regardless of current user's access
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
   const { data: diafragmaCourses } = await supabaseAdmin
     .from('courses')
     .select('id, title, minimum_tier')
@@ -228,18 +227,18 @@ async function findTestCourses(): Promise<{
 
 /**
  * Finds a lesson resource with required_tier = diafragma.
+ *
+ * SECURITY: Accepts the admin client as a parameter — it must be created
+ * AFTER the authorization check in runStorageAudit(). This function does
+ * NOT create its own admin client, preventing it from being called without
+ * a prior authorization boundary.
  */
-async function findDiafragmaResource(): Promise<{
+async function findDiafragmaResource(supabaseAdmin: ReturnType<typeof createAdminClient>): Promise<{
   id: string;
   course_id: string;
   storage_path: string;
   required_tier: string;
 } | null> {
-  const supabaseAdmin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
   const { data } = await supabaseAdmin
     .from('lesson_resources')
     .select('id, course_id, storage_path, required_tier')
@@ -316,13 +315,23 @@ export async function runStorageAudit(): Promise<StorageAuditReport> {
   // Only after both checks pass do we proceed with Service Role queries.
   // createAdminClient() (Service Role) is NOT called before this point.
 
+  // Create the admin client ONCE, after authorization is confirmed.
+  // This client is passed to helper functions — they do NOT create their own.
+  // This ensures no Service Role operation can occur without passing the
+  // auth + admin checks above.
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const timestamp = new Date().toISOString();
   const results: AuditTestResult[] = [];
 
   // Get current user context
   const userContext = await getCurrentUserTier();
-  const { diafragmaCourse, aperturaCourse } = await findTestCourses();
-  const diafragmaResource = await findDiafragmaResource();
+  // Pass the admin client to helpers — they do NOT create their own.
+  const { diafragmaCourse, aperturaCourse } = await findTestCourses(supabaseAdmin);
+  const diafragmaResource = await findDiafragmaResource(supabaseAdmin);
 
   // ── POLICY DOCUMENTATION ──────────────────────────────────────────────────
   const policyDocumentation: PolicyDocumentation = {

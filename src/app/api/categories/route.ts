@@ -1,12 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+/**
+ * GET /api/categories
+ *
+ * Returns the list of published categories with course counts.
+ * Used on the landing page and courses page.
+ *
+ * SECURITY FIX (Audit Phase 3.1 — HIGH #1):
+ *   Previously used SUPABASE_SERVICE_ROLE_KEY with no authentication check.
+ *   Service Role bypasses RLS and should never be used in a public read-only
+ *   endpoint that returns non-sensitive public data.
+ *
+ *   Fix: Uses the server-side client (anon key) instead of Service Role.
+ *   Categories and published courses are public data — they have public
+ *   SELECT policies (or should have them). If the anon client cannot read
+ *   these tables, the correct fix is to add a public SELECT policy, not
+ *   to use Service Role for a public endpoint.
+ *
+ *   Service Role is NOT used in this endpoint.
+ */
 export async function GET() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Use the server client (anon key) — NOT Service Role.
+    // Categories and published courses are public data.
+    const supabase = await createClient();
 
     // Fetch categories
     const { data: categories, error: catError } = await supabase

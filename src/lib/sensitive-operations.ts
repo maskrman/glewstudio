@@ -79,6 +79,71 @@
  *   File: src/app/courses/components/CoursesScreen.tsx
  *
  * ─────────────────────────────────────────────────────────────────────────────
+ * ✅ FIXED IN PHASE 3.1 SECURITY HARDENING (HIGH FINDINGS)
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * [FIXED] HIGH #1 — Service Role in public endpoints (user-count, categories)
+ *   Was:  /api/user-count used SUPABASE_SERVICE_ROLE_KEY with no auth check.
+ *         /api/categories used SUPABASE_SERVICE_ROLE_KEY with no auth check.
+ *   Now:  /api/user-count uses anon client + get_public_user_count() SECURITY DEFINER.
+ *         /api/categories uses anon client + public SELECT policies on categories/courses.
+ *         Service Role is NOT used in either public endpoint.
+ *   Files: src/app/api/user-count/route.ts, src/app/api/categories/route.ts
+ *   Migration: 20260819050000_phase31_high_findings_fix.sql
+ *
+ * [FIXED] HIGH #2 — Service Role helpers without authorization boundary
+ *   Was:  findTestCourses() and findDiafragmaResource() in storageAudit.ts
+ *         created their own admin clients independently, without requiring
+ *         an authorization check to have occurred first.
+ *   Now:  Both helpers accept the admin client as a parameter.
+ *         The admin client is created ONCE in runStorageAudit() AFTER
+ *         auth.getUser() + is_admin() checks pass. Helpers cannot be
+ *         called without going through the authorization boundary.
+ *   File: src/app/actions/storageAudit.ts
+ *
+ * [FIXED] HIGH #3 — lesson_resources TABLE RLS parallel permissive policy
+ *   Was:  "authenticated_read_lesson_resources" policy had USING(true) with
+ *         no documentation of intent, creating ambiguity about whether it
+ *         was a bypass for file access.
+ *   Now:  Policy re-created with explicit COMMENT documenting it is
+ *         metadata-only. Actual file access is gated by:
+ *           1. generateSignedDownloadUrl() — checks required_tier server-side
+ *           2. Storage policy lesson_resources_tier_select — calls
+ *              user_can_access_lesson_resource() which checks required_tier
+ *         The TABLE policy does NOT grant access to actual files.
+ *   Migration: 20260819050000_phase31_high_findings_fix.sql
+ *
+ * [FIXED] HIGH #4 — Demo data with slug-based course_id
+ *   Was:  Migration 20260806052521 inserted demo rows with
+ *         course_id = 'iluminacion-rembrandt-retrato' (TEXT slug, not UUID).
+ *         These rows were fail-closed in Storage (user_can_access_lesson_resource
+ *         rejects non-UUID path segments) but were dirty data.
+ *   Now:  New migration deletes all lesson_resources rows where course_id
+ *         does not match UUID format. Production is clean.
+ *   Migration: 20260819050000_phase31_high_findings_fix.sql
+ *
+ * [FIXED] HIGH #5 — lesson_resources.course_id TEXT vs UUID (partial)
+ *   Was:  course_id was TEXT with no format constraint, allowing slug-based
+ *         or arbitrary string values.
+ *   Now:  CHECK constraint added to enforce UUID format on future inserts.
+ *         Full ALTER COLUMN TYPE UUID migration is deferred as technical debt
+ *         pending production data verification.
+ *   Technical debt: Full UUID migration (ALTER COLUMN + FK to courses(id))
+ *         should be done after confirming all production rows have valid UUIDs
+ *         and all application queries handle UUID type correctly.
+ *   Migration: 20260819050000_phase31_high_findings_fix.sql
+ *
+ * [FIXED] HIGH #6 — Admin authorization (is_admin() using raw_user_meta_data)
+ *   Was:  Migration 20260818220000 defined is_admin() checking BOTH
+ *         raw_user_meta_data AND raw_app_meta_data. A user could call
+ *         supabase.auth.updateUser({ data: { role: 'admin' } }) to become admin.
+ *   Now:  is_admin() checks ONLY raw_app_meta_data (server-side only).
+ *         Migration 20260819000000 fixed this; 20260819050000 re-confirms it
+ *         with search_path pinned and explicit documentation.
+ *         raw_user_meta_data is intentionally NOT checked.
+ *   Migration: 20260819050000_phase31_high_findings_fix.sql
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  * ⚠️  PENDING — Requires Phase 9 (Payment Integration)
  * ─────────────────────────────────────────────────────────────────────────────
  *
