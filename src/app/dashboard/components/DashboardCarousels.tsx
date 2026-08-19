@@ -1,6 +1,23 @@
 import React from 'react';
 import CourseCarousel from '@/components/ui/CourseCarousel';
 
+// ─── HALLAZGO 4C — DEMO DATA NOTICE ──────────────────────────────────────────
+// The IDs below (cw-001, pc-001, sl-001, etc.) are display-only identifiers
+// used exclusively for UI rendering in this demo carousel.
+//
+// THESE IDs MUST NEVER BE USED AS courseId IN:
+//   - updateCourseProgress()
+//   - saveVideoProgress()
+//   - course_purchases
+//   - course_progress
+//   - lesson_resources
+//   - video authorization
+//   - storage authorization
+//
+// All DB operations require courses.id (UUID).
+// Slugs and demo IDs are for URLs, navigation, and display only.
+// ─────────────────────────────────────────────────────────────────────────────
+
 const continueWatching = [
 { id: 'cw-001', title: 'Iluminación Rembrandt para Retrato', instructor: 'Carlos Mendoza', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1d731ee8d-1779952599495.png", thumbnailAlt: 'Studio lighting setup with Rembrandt pattern creating dramatic shadows on portrait subject', duration: '14:32', tier: 'obturador' as const, progress: 65, lessonCount: 12, rating: 4.9 },
 { id: 'cw-002', title: 'Retoque de Piel en Photoshop CC', instructor: 'Sofía Reyes', thumbnail: "https://img.rocket.new/generatedImages/rocket_gen_img_1aa26c31d-1785844143724.png", thumbnailAlt: 'Professional photo retouching workflow showing skin smoothing techniques in Photoshop', duration: '22:15', tier: 'apertura' as const, progress: 30, lessonCount: 8, rating: 4.8 },

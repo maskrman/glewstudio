@@ -15,8 +15,19 @@ import { updateCourseProgress } from '@/lib/courseProgress';
 const COURSE_REQUIRED_TIER: SubscriptionTier = 'obturador';
 
 // Course metadata used for progress tracking
+// ─── HALLAZGO 4C ──────────────────────────────────────────────────────────────
+// COURSE_META.id is a URL slug used for navigation/display only.
+// It is NOT a UUID from courses.id and therefore CANNOT be used as a courseId
+// in DB persistence operations (course_progress, course_purchases, storage).
+//
+// updateCourseProgress() will detect the non-UUID value and skip the DB write.
+// The UI (progress bar, lesson completion overlay) remains fully functional.
+//
+// When this screen is connected to a real course, replace COURSE_META.id with
+// the actual courses.id UUID resolved from the slug via DB lookup.
+// ─────────────────────────────────────────────────────────────────────────────
 const COURSE_META = {
-  id: 'iluminacion-rembrandt-retrato',
+  id: 'iluminacion-rembrandt-retrato', // demo slug — NOT a UUID, DB writes are skipped
   title: 'Iluminación Rembrandt para Retrato',
   instructor: 'Carlos Mendoza',
   thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_15ec41795-1785194269875.png',

@@ -4,6 +4,18 @@ import { createClient } from '@/lib/supabase/client';
 const MAX_ADDITIONAL_SECONDS = 7200; // 2 hours per session
 const MAX_TOTAL_SECONDS = 86400;     // 24 hours total course duration
 
+// UUID v4 regex — courseId MUST be a real UUID from courses.id
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Returns true if the given string is a valid UUID.
+ * Slugs (e.g. 'iluminacion-rembrandt-retrato') and demo IDs (e.g. 'cw-001')
+ * are NOT valid UUIDs and must never be written to course_progress.
+ */
+function isValidUUID(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
 export interface CourseProgressPayload {
   userId: string;
   courseId: string;
@@ -52,6 +64,21 @@ export interface CourseProgressPayload {
  *   user_id → always from server-side session in saveVideoProgress()
  */
 export async function updateCourseProgress(payload: CourseProgressPayload): Promise<void> {
+  // ─── HALLAZGO 4C FIX ──────────────────────────────────────────────────────
+  // courseId MUST be a real UUID from courses.id.
+  // Demo slugs ('iluminacion-rembrandt-retrato') and demo IDs ('cw-001',
+  // 'pc-001', 'sl-001') are NOT valid courseIds for DB persistence.
+  // If the courseId is not a UUID, skip the DB write entirely — the UI
+  // remains functional but no false progress is written.
+  if (!isValidUUID(payload.courseId)) {
+    console.warn(
+      `[updateCourseProgress] courseId "${payload.courseId}" is not a valid UUID. ` +
+      'This is a demo component — skipping DB write. ' + 'Use courses.id (UUID) for real persistence.'
+    );
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Validate additionalSeconds
   const additionalSeconds = Math.floor(Number(payload.additionalSeconds));
   if (!Number.isFinite(additionalSeconds) || additionalSeconds < 0) {
