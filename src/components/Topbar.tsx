@@ -14,6 +14,7 @@ const navLinks = [
   { label: 'Cursos', href: '/course-detail' },
   { label: 'En Vivo', href: '/dashboard' },
   { label: 'Mi Lista', href: '/watchlist' },
+  { label: 'Admin', href: '/admin' },
 ];
 
 export default function Topbar({ currentPath = '' }: TopbarProps) {

@@ -10,6 +10,7 @@ import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { MEMBERSHIP_PRICES } from '@/lib/config';
 
 
 type AuthTab = 'login' | 'signup';
@@ -27,11 +28,12 @@ interface SignupForm {
   plan: string;
 }
 
+// Plans derived from centralized config — do NOT hardcode prices here
 const plans = [
-  { id: 'apertura', name: 'Apertura', price: '$9/mes', tier: 'apertura' as const },
-  { id: 'obturador', name: 'Obturador', price: '$18/mes', tier: 'obturador' as const, recommended: true },
-  { id: 'diafragma', name: 'Diafragma', price: '$36/mes', tier: 'diafragma' as const },
-];
+{ id: 'apertura', name: 'Apertura', price: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`, tier: 'apertura' as const },
+{ id: 'obturador', name: 'Obturador', price: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`, tier: 'obturador' as const, recommended: true },
+{ id: 'diafragma', name: 'Diafragma', price: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`, tier: 'diafragma' as const }];
+
 
 export default function AuthScreen() {
   const [tab, setTab] = useState<AuthTab>('login');
@@ -84,8 +86,8 @@ export default function AuthScreen() {
           fill
           priority
           className="object-cover"
-          sizes="60vw"
-        />
+          sizes="60vw" />
+        
 
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
@@ -112,15 +114,15 @@ export default function AuthScreen() {
             </p>
             <div className="flex items-center gap-6 mt-8">
               {[
-                { icon: 'FilmIcon', label: '120+ Cursos' },
-                { icon: 'UsersIcon', label: '18K Estudiantes' },
-                { icon: 'StarIcon', label: '4.9 Rating' },
-              ].map((stat) => (
-                <div key={`auth-stat-${stat.label}`} className="flex items-center gap-2 text-sm text-muted-foreground">
+              { icon: 'FilmIcon', label: '120+ Cursos' },
+              { icon: 'UsersIcon', label: '18K Estudiantes' },
+              { icon: 'StarIcon', label: '4.9 Rating' }].
+              map((stat) =>
+              <div key={`auth-stat-${stat.label}`} className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Icon name={stat.icon as any} size={16} className="text-primary" />
                   <span>{stat.label}</span>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -137,36 +139,36 @@ export default function AuthScreen() {
         <div className="w-full max-w-md">
           {/* Tab toggle */}
           <div className="flex bg-muted rounded-xl p-1 mb-8">
-            {(['login', 'signup'] as AuthTab[]).map((t) => (
-              <button
-                key={`auth-tab-${t}`}
-                onClick={() => setTab(t)}
-                className={`flex-1 py-2.5 text-sm font-600 rounded-lg transition-all duration-200 ${
-                  tab === t
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
+            {(['login', 'signup'] as AuthTab[]).map((t) =>
+            <button
+              key={`auth-tab-${t}`}
+              onClick={() => setTab(t)}
+              className={`flex-1 py-2.5 text-sm font-600 rounded-lg transition-all duration-200 ${
+              tab === t ?
+              'bg-card text-foreground shadow-sm' :
+              'text-muted-foreground hover:text-foreground'}`
+              }>
+              
                 {t === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
               </button>
-            ))}
+            )}
           </div>
 
           {/* LOGIN FORM */}
-          {tab === 'login' && (
-            <form onSubmit={loginForm.handleSubmit(handleLogin)} className="flex flex-col gap-5">
+          {tab === 'login' &&
+          <form onSubmit={loginForm.handleSubmit(handleLogin)} className="flex flex-col gap-5">
               <div>
                 <h2 className="text-2xl font-800 text-foreground mb-1">Bienvenido de vuelta</h2>
                 <p className="text-sm text-muted-foreground">Inicia sesión para continuar aprendiendo.</p>
               </div>
 
               {/* Error banner */}
-              {loginError && (
-                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+              {loginError &&
+            <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 rounded-xl p-3">
                   <Icon name="ExclamationTriangleIcon" size={16} className="text-red-400 shrink-0 mt-0.5" />
                   <p className="text-sm text-red-400">{loginError}</p>
                 </div>
-              )}
+            }
 
               {/* Email */}
               <div className="flex flex-col gap-1.5">
@@ -174,18 +176,18 @@ export default function AuthScreen() {
                   Correo electrónico
                 </label>
                 <input
-                  id="login-email"
-                  type="email"
-                  placeholder="tu@correo.com"
-                  className="input-dark px-4 py-2.5 text-sm w-full"
-                  {...loginForm.register('email', {
-                    required: 'El correo es obligatorio',
-                    pattern: { value: /^\S+@\S+$/i, message: 'Correo inválido' },
-                  })}
-                />
-                {loginForm.formState.errors.email && (
-                  <p className="text-xs text-red-400">{loginForm.formState.errors.email.message}</p>
-                )}
+                id="login-email"
+                type="email"
+                placeholder="tu@correo.com"
+                className="input-dark px-4 py-2.5 text-sm w-full"
+                {...loginForm.register('email', {
+                  required: 'El correo es obligatorio',
+                  pattern: { value: /^\S+@\S+$/i, message: 'Correo inválido' }
+                })} />
+              
+                {loginForm.formState.errors.email &&
+              <p className="text-xs text-red-400">{loginForm.formState.errors.email.message}</p>
+              }
               </div>
 
               {/* Password */}
@@ -200,67 +202,67 @@ export default function AuthScreen() {
                 </div>
                 <div className="relative">
                   <input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="input-dark px-4 py-2.5 text-sm w-full pr-10"
-                    {...loginForm.register('password', { required: 'La contraseña es obligatoria' })}
-                  />
+                  id="login-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  className="input-dark px-4 py-2.5 text-sm w-full pr-10"
+                  {...loginForm.register('password', { required: 'La contraseña es obligatoria' })} />
+                
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                  
                     <Icon name={showPassword ? 'EyeSlashIcon' : 'EyeIcon'} size={16} />
                   </button>
                 </div>
-                {loginForm.formState.errors.password && (
-                  <p className="text-xs text-red-400">{loginForm.formState.errors.password.message}</p>
-                )}
+                {loginForm.formState.errors.password &&
+              <p className="text-xs text-red-400">{loginForm.formState.errors.password.message}</p>
+              }
               </div>
 
               {/* Remember me */}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-border bg-input accent-primary"
-                  {...loginForm.register('remember')}
-                />
+                type="checkbox"
+                className="w-4 h-4 rounded border-border bg-input accent-primary"
+                {...loginForm.register('remember')} />
+              
                 <span className="text-sm text-muted-foreground">Mantenerme conectado</span>
               </label>
 
               <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full py-3 text-sm font-700 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full py-3 text-sm font-700 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              
+                {loading ?
+              <>
                     <Icon name="ArrowPathIcon" size={16} className="animate-spin" />
                     Verificando…
-                  </>
-                ) : (
-                  'Iniciar Sesión'
-                )}
+                  </> :
+
+              'Iniciar Sesión'
+              }
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
                 ¿No tienes cuenta?{' '}
                 <button
-                  type="button"
-                  onClick={() => setTab('signup')}
-                  className="text-primary hover:text-accent font-600 transition-colors"
-                >
+                type="button"
+                onClick={() => setTab('signup')}
+                className="text-primary hover:text-accent font-600 transition-colors">
+                
                   Regístrate gratis
                 </button>
               </p>
             </form>
-          )}
+          }
 
           {/* SIGNUP FORM */}
-          {tab === 'signup' && (
-            <form onSubmit={signupForm.handleSubmit(handleSignup)} className="flex flex-col gap-5">
+          {tab === 'signup' &&
+          <form onSubmit={signupForm.handleSubmit(handleSignup)} className="flex flex-col gap-5">
               <div>
                 <h2 className="text-2xl font-800 text-foreground mb-1">Crea tu cuenta</h2>
                 <p className="text-sm text-muted-foreground">Únete a 18,000 fotógrafos en Glewstudio.</p>
@@ -272,15 +274,15 @@ export default function AuthScreen() {
                   Nombre completo
                 </label>
                 <input
-                  id="signup-name"
-                  type="text"
-                  placeholder="Tu nombre"
-                  className="input-dark px-4 py-2.5 text-sm w-full"
-                  {...signupForm.register('name', { required: 'El nombre es obligatorio' })}
-                />
-                {signupForm.formState.errors.name && (
-                  <p className="text-xs text-red-400">{signupForm.formState.errors.name.message}</p>
-                )}
+                id="signup-name"
+                type="text"
+                placeholder="Tu nombre"
+                className="input-dark px-4 py-2.5 text-sm w-full"
+                {...signupForm.register('name', { required: 'El nombre es obligatorio' })} />
+              
+                {signupForm.formState.errors.name &&
+              <p className="text-xs text-red-400">{signupForm.formState.errors.name.message}</p>
+              }
               </div>
 
               {/* Email */}
@@ -289,18 +291,18 @@ export default function AuthScreen() {
                   Correo electrónico
                 </label>
                 <input
-                  id="signup-email"
-                  type="email"
-                  placeholder="tu@correo.com"
-                  className="input-dark px-4 py-2.5 text-sm w-full"
-                  {...signupForm.register('email', {
-                    required: 'El correo es obligatorio',
-                    pattern: { value: /^\S+@\S+$/i, message: 'Correo inválido' },
-                  })}
-                />
-                {signupForm.formState.errors.email && (
-                  <p className="text-xs text-red-400">{signupForm.formState.errors.email.message}</p>
-                )}
+                id="signup-email"
+                type="email"
+                placeholder="tu@correo.com"
+                className="input-dark px-4 py-2.5 text-sm w-full"
+                {...signupForm.register('email', {
+                  required: 'El correo es obligatorio',
+                  pattern: { value: /^\S+@\S+$/i, message: 'Correo inválido' }
+                })} />
+              
+                {signupForm.formState.errors.email &&
+              <p className="text-xs text-red-400">{signupForm.formState.errors.email.message}</p>
+              }
               </div>
 
               {/* Password */}
@@ -311,75 +313,75 @@ export default function AuthScreen() {
                 <p className="text-xs text-muted-foreground">Mínimo 8 caracteres, una mayúscula y un número.</p>
                 <div className="relative">
                   <input
-                    id="signup-password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="input-dark px-4 py-2.5 text-sm w-full pr-10"
-                    {...signupForm.register('password', {
-                      required: 'La contraseña es obligatoria',
-                      minLength: { value: 8, message: 'Mínimo 8 caracteres' },
-                    })}
-                  />
+                  id="signup-password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  className="input-dark px-4 py-2.5 text-sm w-full pr-10"
+                  {...signupForm.register('password', {
+                    required: 'La contraseña es obligatoria',
+                    minLength: { value: 8, message: 'Mínimo 8 caracteres' }
+                  })} />
+                
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={showPassword ? 'Ocultar' : 'Mostrar'}
-                  >
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? 'Ocultar' : 'Mostrar'}>
+                  
                     <Icon name={showPassword ? 'EyeSlashIcon' : 'EyeIcon'} size={16} />
                   </button>
                 </div>
-                {signupForm.formState.errors.password && (
-                  <p className="text-xs text-red-400">{signupForm.formState.errors.password.message}</p>
-                )}
+                {signupForm.formState.errors.password &&
+              <p className="text-xs text-red-400">{signupForm.formState.errors.password.message}</p>
+              }
               </div>
 
               {/* Plan selection */}
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-600 text-foreground">Elige tu plan</label>
                 <div className="flex flex-col gap-2">
-                  {plans.map((plan) => (
-                    <label
-                      key={`signup-plan-${plan.id}`}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                        watchedPlan === plan.id
-                          ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-border/80'
-                      }`}
-                    >
+                  {plans.map((plan) =>
+                <label
+                  key={`signup-plan-${plan.id}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  watchedPlan === plan.id ?
+                  'border-primary/50 bg-primary/5' : 'border-border hover:border-border/80'}`
+                  }>
+                  
                       <input
-                        type="radio"
-                        value={plan.id}
-                        className="accent-primary"
-                        {...signupForm.register('plan')}
-                      />
+                    type="radio"
+                    value={plan.id}
+                    className="accent-primary"
+                    {...signupForm.register('plan')} />
+                  
                       <div className="flex items-center gap-2 flex-1">
                         <TierBadge tier={plan.tier} size="sm" />
                         <span className="text-sm font-600 text-foreground">{plan.name}</span>
-                        {'recommended' in plan && plan.recommended && (
-                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
+                        {'recommended' in plan && plan.recommended &&
+                    <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
                             Popular
                           </span>
-                        )}
+                    }
                       </div>
                       <span className="text-sm font-700 text-primary">{plan.price}</span>
                     </label>
-                  ))}
+                )}
                 </div>
               </div>
 
               <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full py-3 text-sm font-700 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full py-3 text-sm font-700 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              
+                {loading ?
+              <>
                     <Icon name="ArrowPathIcon" size={16} className="animate-spin" />
                     Creando cuenta…
-                  </>
-                ) : (
-                  'Crear Cuenta'
-                )}
+                  </> :
+
+              'Crear Cuenta'
+              }
               </button>
 
               <p className="text-center text-xs text-muted-foreground leading-relaxed">
@@ -397,17 +399,17 @@ export default function AuthScreen() {
               <p className="text-center text-sm text-muted-foreground">
                 ¿Ya tienes cuenta?{' '}
                 <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-primary hover:text-accent font-600 transition-colors"
-                >
+                type="button"
+                onClick={() => setTab('login')}
+                className="text-primary hover:text-accent font-600 transition-colors">
+                
                   Inicia sesión
                 </button>
               </p>
             </form>
-          )}
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }

@@ -1,201 +1,180 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
-import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { getUserSubscriptionTier, type SubscriptionTier } from '@/lib/subscription';
+import { MEMBERSHIP_PRICES, MEMBERSHIP_FEATURES, MEMBERSHIP_DISCOUNTS, TIER_LABELS, PAYMENT_CONFIG } from '@/lib/config';
 import { createClient } from '@/lib/supabase/client';
 
-type AccountSection = 'perfil' | 'suscripcion' | 'facturacion' | 'descargas' | 'certificados';
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ProfileForm {
-  name: string;
-  email: string;
-  bio: string;
-  notifyNewCourses: boolean;
-  notifyLive: boolean;
-  notifyProgress: boolean;
+interface CourseProgressRow {
+  id: string;
+  course_id: string;
+  course_title: string;
+  course_instructor: string;
+  course_thumbnail: string;
+  course_thumbnail_alt: string;
+  watched_seconds: number;
+  total_seconds: number;
+  completed: boolean;
+  started_at: string;
+  updated_at: string;
 }
 
-const invoices = [
-{ id: 'inv-001', date: '01 jul 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-002', date: '01 jun 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-003', date: '01 may 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-004', date: '01 abr 2026', amount: '$18.00', status: 'Pagado', plan: 'Obturador', method: 'Visa ••••4821' },
-{ id: 'inv-005', date: '01 mar 2026', amount: '$12.00', status: 'Pagado', plan: 'Apertura', method: 'Visa ••••4821' },
-{ id: 'inv-006', date: '01 feb 2026', amount: '$12.00', status: 'Pagado', plan: 'Apertura', method: 'Visa ••••4821' }];
+interface DownloadRow {
+  id: string;
+  file_name: string;
+  course_title: string;
+  file_size: string | null;
+  file_type: string;
+  downloaded_at: string;
+}
 
+type AccountSection = 'perfil' | 'suscripcion' | 'facturacion' | 'progreso' | 'descargas' | 'certificados';
 
-const downloads = [
-{ id: 'dl-001', name: 'Archivo RAW — Iluminación Rembrandt (Lección 4)', course: 'Iluminación Rembrandt para Retrato', date: '22 jul 2026', size: '48.2 MB', type: 'RAW' },
-{ id: 'dl-002', name: 'Esquema de Iluminación Rembrandt — PDF', course: 'Iluminación Rembrandt para Retrato', date: '22 jul 2026', size: '2.8 MB', type: 'PDF' },
-{ id: 'dl-003', name: 'Preset Lightroom — Tonos Cálidos Retrato', course: 'Iluminación Rembrandt para Retrato', date: '20 jul 2026', size: '1.1 MB', type: 'PRESET' },
-{ id: 'dl-004', name: 'Archivo RAW — Fotografía de Producto Mesa de Luz', course: 'Fotografía de Producto en Mesa de Luz', date: '18 jul 2026', size: '62.5 MB', type: 'RAW' },
-{ id: 'dl-005', name: 'Flujo de Trabajo RAW — PDF Guía Rápida', course: 'Flujo de Trabajo RAW en Lightroom', date: '15 jul 2026', size: '4.2 MB', type: 'PDF' },
-{ id: 'dl-006', name: 'Preset Pack — Tonos Cinematográficos (6 presets)', course: 'Color Grading Cinematográfico', date: '12 jul 2026', size: '3.8 MB', type: 'PRESET' }];
-
-
-const certificates = [
-{ id: 'cert-001', course: 'Flujo de Trabajo RAW en Lightroom', completed: '10 jul 2026', instructor: 'Alejandro Vega', credential: 'GS-2026-LR-0481' },
-{ id: 'cert-002', course: 'Fotografía de Producto en Mesa de Luz', completed: '02 jul 2026', instructor: 'Sofía Reyes', credential: 'GS-2026-PP-0329' }];
-
-
-const navItems: {id: AccountSection;label: string;icon: string;}[] = [
-{ id: 'perfil', label: 'Perfil', icon: 'UserCircleIcon' },
-{ id: 'suscripcion', label: 'Suscripción', icon: 'CreditCardIcon' },
-{ id: 'facturacion', label: 'Facturación', icon: 'DocumentTextIcon' },
-{ id: 'descargas', label: 'Descargas', icon: 'ArrowDownTrayIcon' },
-{ id: 'certificados', label: 'Certificados', icon: 'TrophyIcon' }];
-
+// ─── Account Screen ───────────────────────────────────────────────────────────
 
 export default function AccountScreen() {
-  const [section, setSection] = useState<AccountSection>('suscripcion');
-  const [saving, setSaving] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [userTier, setUserTier] = useState<string | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [watchedSeconds, setWatchedSeconds] = useState(0);
-  const [coursesInProgress, setCoursesInProgress] = useState(0);
-  const [certificatesCount, setCertificatesCount] = useState(0);
-  const [completedCourses, setCompletedCourses] = useState<{ id: string; course_id: string; course_title: string; course_instructor: string; completed_at: string | null }[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { user, signOut } = useAuth();
   const supabase = createClient();
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario';
-  const displayEmail = user?.email || '';
-  const currentAvatar = avatarUrl || user?.user_metadata?.avatar_url || 'https://img.rocket.new/generatedImages/rocket_gen_img_1453e1878-1763300003100.png';
+  const [section, setSection] = useState<AccountSection>('suscripcion');
+  const [userTier, setUserTier] = useState<SubscriptionTier>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  const tierLabel = userTier
-    ? userTier.charAt(0).toUpperCase() + userTier.slice(1)
-    : 'Sin plan';
+  // Profile state
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
+  // Progress state
+  const [progressRows, setProgressRows] = useState<CourseProgressRow[]>([]);
+  const [progressLoading, setProgressLoading] = useState(false);
+
+  // Downloads state
+  const [downloads, setDownloads] = useState<DownloadRow[]>([]);
+  const [downloadsLoading, setDownloadsLoading] = useState(false);
+
+  // Sign-out state
+  const [signingOut, setSigningOut] = useState(false);
+
+  // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) {
-      setStatsLoading(false);
-      return;
-    }
+    if (!user) { setStatsLoading(false); return; }
 
-    const fetchStats = async () => {
-      setStatsLoading(true);
-      try {
-        // Fetch subscription tier
-        const { data: subData } = await supabase
-          .from('subscriptions')
-          .select('tier')
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .maybeSingle();
+    // Populate profile fields from user metadata first (fast)
+    setFullName(user.user_metadata?.full_name || '');
+    setAvatarUrl(user.user_metadata?.avatar_url || '');
 
-        setUserTier(subData?.tier ?? null);
-
-        // Fetch course progress stats
-        const { data: progressData } = await supabase
-          .from('course_progress')
-          .select('id, course_id, course_title, course_instructor, watched_seconds, completed, completed_at')
-          .eq('user_id', user.id);
-
-        if (progressData) {
-          const totalSeconds = progressData.reduce((sum, row) => sum + (row.watched_seconds || 0), 0);
-          setWatchedSeconds(totalSeconds);
-
-          const inProgress = progressData.filter((row) => !row.completed).length;
-          setCoursesInProgress(inProgress);
-
-          const completed = progressData.filter((row) => row.completed);
-          setCertificatesCount(completed.length);
-          setCompletedCourses(
-            completed.map((row) => ({
-              id: row.id,
-              course_id: row.course_id,
-              course_title: row.course_title,
-              course_instructor: row.course_instructor,
-              completed_at: row.completed_at,
-            }))
-          );
-        }
-      } catch {
-        // silently fail — stats remain at 0
-      } finally {
-        setStatsLoading(false);
+    // Then load subscription tier + profile from DB
+    const load = async () => {
+      const [tier, profileData] = await Promise.all([
+        getUserSubscriptionTier(),
+        supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
+      ]);
+      setUserTier(tier);
+      if (profileData.data) {
+        if (profileData.data.full_name) setFullName(profileData.data.full_name);
+        if (profileData.data.avatar_url) setAvatarUrl(profileData.data.avatar_url);
       }
+      setStatsLoading(false);
     };
+    load();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    fetchStats();
-  }, [user]);
-
-  // Format seconds into "Xh Ymin" or "Ymin"
-  const formatWatchTime = (seconds: number): string => {
-    if (seconds === 0) return '0 min';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0 && m > 0) return `${h}h ${m}min`;
-    if (h > 0) return `${h}h`;
-    return `${m}min`;
-  };
-
-  const profileForm = useForm<ProfileForm>({
-    defaultValues: {
-      name: displayName,
-      email: displayEmail,
-      bio: 'Fotógrafa de retrato y moda basada en CDMX. Especializada en sesiones de estudio con iluminación artificial.',
-      notifyNewCourses: true,
-      notifyLive: true,
-      notifyProgress: false
-    }
-  });
-
-  const handleSaveProfile = async (data: ProfileForm) => {
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: data.name }
+  // ── Load progress when section changes ─────────────────────────────────────
+  useEffect(() => {
+    if (section !== 'progreso' || !user) return;
+    setProgressLoading(true);
+    supabase
+      .from('course_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => {
+        setProgressRows((data as CourseProgressRow[]) || []);
+        setProgressLoading(false);
       });
-      if (error) throw error;
-      toast.success('Perfil actualizado correctamente');
-    } catch (err: any) {
-      toast.error(err.message || 'Error al guardar el perfil');
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, [section, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleLogout = async () => {
-    setLoggingOut(true);
+  // ── Load downloads when section changes ────────────────────────────────────
+  useEffect(() => {
+    if (section !== 'descargas' || !user) return;
+    setDownloadsLoading(true);
+    supabase
+      .from('downloads')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('downloaded_at', { ascending: false })
+      .then(({ data }) => {
+        setDownloads((data as DownloadRow[]) || []);
+        setDownloadsLoading(false);
+      });
+  }, [section, user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const tierLabel = userTier ? TIER_LABELS[userTier] : 'Sin membresía';
+  const tierPrice = userTier ? MEMBERSHIP_PRICES[userTier] : null;
+  const tierDiscount = userTier ? MEMBERSHIP_DISCOUNTS[userTier] : 0;
+  const tierFeatures = userTier ? MEMBERSHIP_FEATURES[userTier] : [];
+
+  const completedCourses = progressRows.filter((r) => r.completed);
+
+  const navItems: { id: AccountSection; label: string; icon: string }[] = [
+    { id: 'perfil', label: 'Perfil', icon: 'UserCircleIcon' },
+    { id: 'suscripcion', label: 'Suscripción', icon: 'CreditCardIcon' },
+    { id: 'facturacion', label: 'Facturación', icon: 'ReceiptPercentIcon' },
+    { id: 'progreso', label: 'Mi Progreso', icon: 'ChartBarIcon' },
+    { id: 'descargas', label: 'Descargas', icon: 'ArrowDownTrayIcon' },
+    { id: 'certificados', label: 'Certificados', icon: 'TrophyIcon' },
+  ];
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
     try {
       await signOut();
       router.push('/sign-up-login');
-    } catch (err: any) {
-      toast.error(err.message || 'Error al cerrar sesión');
-      setLoggingOut(false);
+    } catch {
+      setSigningOut(false);
     }
   };
 
   const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+    avatarInputRef.current?.click();
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      setProfileError('Solo se permiten imágenes.');
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('La imagen no puede superar los 2MB');
+      setProfileError('La imagen no puede superar 2 MB.');
       return;
     }
 
-    setUploadingAvatar(true);
+    setAvatarUploading(true);
+    setProfileError(null);
+
     try {
-      const ext = file.name.split('.').pop();
+      const ext = file.name.split('.').pop() ?? 'jpg';
       const filePath = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage
@@ -204,495 +183,553 @@ export default function AccountScreen() {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
 
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      // Update profile in DB
+      await supabase.from('profiles').upsert({ id: user.id, avatar_url: publicUrl });
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl }
-      });
-
-      if (updateError) throw updateError;
+      // Update user metadata
+      await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
 
       setAvatarUrl(publicUrl);
-      toast.success('Foto de perfil actualizada');
-    } catch (err: any) {
-      toast.error(err.message || 'Error al subir la imagen');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al subir la imagen';
+      setProfileError(msg);
     } finally {
-      setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setAvatarUploading(false);
     }
   };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    setProfileSaved(false);
+
+    try {
+      // Update profiles table
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, full_name: fullName, updated_at: new Date().toISOString() });
+
+      if (dbError) throw dbError;
+
+      // Update auth user metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { full_name: fullName },
+      });
+
+      if (authError) throw authError;
+
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar';
+      setProfileError(msg);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen pt-16">
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16 py-10">
+
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-primary/30">
-            <AppImage
-              src={currentAvatar}
-              alt={`Foto de perfil de ${displayName}`}
-              fill
-              className="object-cover"
-              sizes="56px" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-700 text-foreground">{displayName}</h1>
-              {userTier && <TierBadge tier={userTier as any} size="sm" showIcon />}
+        <div className="flex items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            {/* Avatar with upload */}
+            <div className="relative w-14 h-14 group cursor-pointer" onClick={handleAvatarClick}>
+              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-primary/30">
+                <AppImage
+                  src={avatarUrl || 'https://img.rocket.new/generatedImages/rocket_gen_img_1453e1878-1763300003100.png'}
+                  alt={`Foto de perfil de ${fullName || user?.email?.split('@')[0] || 'Usuario'}`}
+                  width={56}
+                  height={56}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                {avatarUploading
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Icon name="CameraIcon" size={16} className="text-white" />
+                }
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </div>
-            <p className="text-sm text-muted-foreground">{displayEmail} · Miembro desde ene 2026</p>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-700 text-foreground">
+                  {fullName || user?.email?.split('@')[0] || 'Usuario'}
+                </h1>
+                {userTier && <TierBadge tier={userTier} size="sm" showIcon />}
+              </div>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
+            </div>
           </div>
+
+          {/* Sign out button */}
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-red-400 transition-colors px-3 py-2 rounded-lg hover:bg-red-400/10"
+          >
+            {signingOut
+              ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              : <Icon name="ArrowRightOnRectangleIcon" size={16} />
+            }
+            <span className="hidden sm:block">Cerrar sesión</span>
+          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left nav */}
-          <aside className="w-full lg:w-56 xl:w-64 shrink-0">
-            <nav className="flex flex-row lg:flex-col gap-1 overflow-x-auto scrollbar-hide">
-              {navItems.map((item) =>
-              <button
-                key={`account-nav-${item.id}`}
-                onClick={() => setSection(item.id)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-600 transition-all whitespace-nowrap ${
-                section === item.id ?
-                'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`
-                }>
-                
-                  <Icon name={item.icon as any} size={17} />
+          {/* Sidebar nav */}
+          <nav className="lg:w-56 shrink-0">
+            <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSection(item.id)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-500 transition-colors whitespace-nowrap ${
+                    section === item.id
+                      ? 'bg-primary/10 text-primary' :'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Icon name={item.icon as any} size={16} />
                   {item.label}
                 </button>
-              )}
-              {/* Logout button */}
-              <button
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-600 transition-all whitespace-nowrap text-red-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-60 lg:mt-4">
-                {loggingOut
-                  ? <Icon name="ArrowPathIcon" size={17} className="animate-spin" />
-                  : <Icon name="ArrowRightOnRectangleIcon" size={17} />
-                }
-                {loggingOut ? 'Cerrando…' : 'Cerrar sesión'}
-              </button>
-            </nav>
-          </aside>
+              ))}
+            </div>
+          </nav>
 
-          {/* Right content */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* PERFIL */}
-            {section === 'perfil' &&
-            <div className="bg-card border border-border rounded-2xl p-6">
-                <h2 className="text-lg font-700 text-foreground mb-1">Información de Perfil</h2>
-                <p className="text-sm text-muted-foreground mb-6">Actualiza tu información personal y preferencias de notificación.</p>
 
-                <form onSubmit={profileForm.handleSubmit(handleSaveProfile)} className="flex flex-col gap-5">
-                  {/* Avatar */}
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-border">
-                      <AppImage
-                        src={currentAvatar}
-                        alt="Foto de perfil actual del usuario"
-                        fill
-                        className="object-cover"
-                        sizes="64px" />
-                      {uploadingAvatar && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <Icon name="ArrowPathIcon" size={18} className="text-white animate-spin" />
-                        </div>
-                      )}
+            {/* ── PROFILE ── */}
+            {section === 'perfil' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Mi Perfil</h2>
+                <div className="glass-card rounded-2xl p-6">
+                  {/* Avatar upload area */}
+                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-border">
+                    <div className="relative w-20 h-20 group cursor-pointer" onClick={handleAvatarClick}>
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-primary/30">
+                        <AppImage
+                          src={avatarUrl || 'https://img.rocket.new/generatedImages/rocket_gen_img_1453e1878-1763300003100.png'}
+                          alt="Avatar de perfil"
+                          width={80}
+                          height={80}
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {avatarUploading
+                          ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          : <Icon name="CameraIcon" size={20} className="text-white" />
+                        }
+                      </div>
                     </div>
                     <div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleAvatarChange}
-                      />
+                      <p className="text-sm font-600 text-foreground mb-1">Foto de perfil</p>
+                      <p className="text-xs text-muted-foreground mb-2">JPG, PNG o GIF · Máx. 2 MB</p>
                       <button
-                        type="button"
                         onClick={handleAvatarClick}
-                        disabled={uploadingAvatar}
-                        className="btn-ghost px-4 py-2 text-sm font-600 mb-1 disabled:opacity-60">
-                        {uploadingAvatar ? 'Subiendo…' : 'Cambiar foto'}
+                        disabled={avatarUploading}
+                        className="btn-ghost px-3 py-1.5 text-xs font-600 flex items-center gap-1.5"
+                      >
+                        <Icon name="ArrowUpTrayIcon" size={12} />
+                        {avatarUploading ? 'Subiendo…' : 'Cambiar foto'}
                       </button>
-                      <p className="text-xs text-muted-foreground">JPG, PNG o WebP · Máx. 2MB</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="acc-name" className="text-sm font-600 text-foreground">Nombre completo</label>
+                  {/* Profile form */}
+                  <div className="flex flex-col gap-4 max-w-md">
+                    <div>
+                      <label className="text-sm font-600 text-foreground block mb-1.5">Nombre</label>
                       <input
-                      id="acc-name"
-                      type="text"
-                      className="input-dark px-4 py-2.5 text-sm"
-                      {...profileForm.register('name', { required: 'Nombre obligatorio' })} />
-                    
-                      {profileForm.formState.errors.name &&
-                    <p className="text-xs text-red-400">{profileForm.formState.errors.name.message}</p>
-                    }
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="input-dark px-4 py-2.5 text-sm w-full"
+                        placeholder="Tu nombre completo"
+                      />
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label htmlFor="acc-email" className="text-sm font-600 text-foreground">Correo electrónico</label>
+                    <div>
+                      <label className="text-sm font-600 text-foreground block mb-1.5">Correo electrónico</label>
                       <input
-                      id="acc-email"
-                      type="email"
-                      className="input-dark px-4 py-2.5 text-sm"
-                      {...profileForm.register('email', { required: 'Correo obligatorio' })} />
-                    
+                        type="email"
+                        defaultValue={user?.email || ''}
+                        className="input-dark px-4 py-2.5 text-sm w-full opacity-60"
+                        disabled
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">El correo no puede modificarse desde aquí.</p>
                     </div>
-                  </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="acc-bio" className="text-sm font-600 text-foreground">Biografía</label>
-                    <p className="text-xs text-muted-foreground">Cuéntanos sobre tu trabajo y estilo fotográfico.</p>
-                    <textarea
-                    id="acc-bio"
-                    rows={3}
-                    className="input-dark px-4 py-2.5 text-sm resize-none"
-                    {...profileForm.register('bio')} />
-                  
-                  </div>
+                    {profileError && (
+                      <p className="text-xs text-red-400">{profileError}</p>
+                    )}
+                    {profileSaved && (
+                      <p className="text-xs text-green-400 flex items-center gap-1">
+                        <Icon name="CheckCircleIcon" size={12} variant="solid" />
+                        Cambios guardados correctamente
+                      </p>
+                    )}
 
-                  {/* Notifications */}
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={profileSaving}
+                      className="btn-primary px-6 py-2.5 text-sm font-700 self-start flex items-center gap-2"
+                    >
+                      {profileSaving && (
+                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                      )}
+                      {profileSaving ? 'Guardando…' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── SUBSCRIPTION ── */}
+            {section === 'suscripcion' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Mi Membresía</h2>
+
+                {/* Demo mode notice */}
+                <div className="flex items-start gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6">
+                  <Icon name="ExclamationTriangleIcon" size={16} className="text-yellow-400 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-sm font-700 text-foreground mb-3">Notificaciones</h3>
-                    <div className="flex flex-col gap-3">
-                      {[
-                    { field: 'notifyNewCourses' as const, label: 'Nuevos cursos y contenido', desc: 'Recibe un aviso cuando se publiquen nuevos cursos' },
-                    { field: 'notifyLive' as const, label: 'Talleres en vivo', desc: 'Recordatorios antes de los talleres del Plan Diafragma' },
-                    { field: 'notifyProgress' as const, label: 'Resumen de progreso semanal', desc: 'Un correo cada lunes con tu avance de la semana' }].
-                    map((notif) =>
-                    <label key={`notif-${notif.field}`} className="flex items-start gap-3 cursor-pointer">
-                          <div className="relative mt-0.5">
-                            <input
-                          type="checkbox"
-                          className="sr-only"
-                          {...profileForm.register(notif.field)} />
-                        
-                            <div className={`w-10 h-5 rounded-full transition-colors ${profileForm.watch(notif.field) ? 'bg-primary' : 'bg-muted'}`}>
-                              <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mt-0.5 ${profileForm.watch(notif.field) ? 'translate-x-5 ml-0.5' : 'translate-x-0.5'}`} />
+                    <p className="text-sm font-600 text-yellow-400">Modo {PAYMENT_CONFIG.mode}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{PAYMENT_CONFIG.note}</p>
+                  </div>
+                </div>
+
+                {/* Current plan */}
+                {statsLoading ? (
+                  <div className="glass-card rounded-2xl p-6 mb-6 animate-pulse">
+                    <div className="h-6 bg-muted rounded w-32 mb-3" />
+                    <div className="h-4 bg-muted rounded w-48" />
+                  </div>
+                ) : userTier ? (
+                  <div className="glass-card rounded-2xl p-6 mb-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <TierBadge tier={userTier} size="md" showIcon />
+                        <p className="text-2xl font-800 text-foreground mt-2">{tierLabel}</p>
+                        <p className="text-muted-foreground text-sm mt-1">
+                          ${tierPrice?.monthly}/mes · Membresía activa
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground mb-1">Descuento en cursos premium</p>
+                        <p className="text-2xl font-800 gradient-gold-text">{tierDiscount}%</p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-border pt-4">
+                      <p className="text-xs font-600 text-muted-foreground mb-3">Beneficios incluidos</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {tierFeatures.map((feature, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <Icon name="CheckCircleIcon" size={14} className="text-primary shrink-0 mt-0.5" variant="solid" />
+                            <span className="text-xs text-foreground">{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-5">
+                      <button className="btn-ghost px-4 py-2 text-sm flex items-center gap-2">
+                        <Icon name="ArrowUpCircleIcon" size={16} />
+                        Cambiar Plan
+                      </button>
+                      <button className="text-sm text-muted-foreground hover:text-red-400 transition-colors px-4 py-2">
+                        Cancelar membresía
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="glass-card rounded-2xl p-6 mb-6 text-center">
+                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <Icon name="CreditCardIcon" size={24} className="text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-700 text-foreground mb-2">Sin membresía activa</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                      Suscríbete para acceder a contenido exclusivo y obtener descuentos en cursos premium.
+                    </p>
+                    <Link href="/#planes" className="btn-primary px-6 py-2.5 text-sm font-700 inline-block">
+                      Ver Planes
+                    </Link>
+                  </div>
+                )}
+
+                {/* Upgrade options */}
+                {!statsLoading && userTier !== 'diafragma' && (
+                  <div>
+                    <h3 className="text-sm font-700 text-foreground mb-4">Opciones de Membresía</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {(['apertura', 'obturador', 'diafragma'] as const).map((tier) => (
+                        <div
+                          key={tier}
+                          className={`rounded-xl border p-4 transition-all ${
+                            userTier === tier
+                              ? 'border-primary/50 bg-primary/5' :'border-border hover:border-primary/30'
+                          }`}
+                        >
+                          <TierBadge tier={tier} size="sm" showIcon />
+                          <p className="text-xl font-800 gradient-gold-text mt-2">
+                            ${MEMBERSHIP_PRICES[tier].monthly}/mes
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            ${MEMBERSHIP_PRICES[tier].annual}/mes anual
+                          </p>
+                          <p className="text-xs text-primary font-600 mt-2">
+                            {MEMBERSHIP_DISCOUNTS[tier]}% descuento en premium
+                          </p>
+                          {userTier === tier ? (
+                            <span className="mt-3 block text-xs text-center text-primary font-600">Plan actual</span>
+                          ) : (
+                            <button className="mt-3 w-full btn-ghost py-1.5 text-xs font-600">
+                              {!userTier ? 'Suscribirse' : 'Cambiar a este plan'}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── PROGRESS ── */}
+            {section === 'progreso' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Mi Progreso</h2>
+
+                {progressLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="glass-card rounded-xl p-4 animate-pulse">
+                        <div className="h-4 bg-muted rounded w-48 mb-2" />
+                        <div className="h-2 bg-muted rounded w-full" />
+                      </div>
+                    ))}
+                  </div>
+                ) : progressRows.length === 0 ? (
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                      <Icon name="ChartBarIcon" size={32} className="text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        Aún no has comenzado ningún curso.
+                      </p>
+                      <Link href="/dashboard" className="btn-ghost px-5 py-2 text-sm">
+                        Explorar Cursos
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                      <div className="glass-card rounded-xl p-4 text-center">
+                        <p className="text-2xl font-800 gradient-gold-text">{progressRows.length}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Cursos iniciados</p>
+                      </div>
+                      <div className="glass-card rounded-xl p-4 text-center">
+                        <p className="text-2xl font-800 gradient-gold-text">{completedCourses.length}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Cursos completados</p>
+                      </div>
+                      <div className="glass-card rounded-xl p-4 text-center col-span-2 sm:col-span-1">
+                        <p className="text-2xl font-800 gradient-gold-text">
+                          {Math.round(progressRows.reduce((acc, r) => acc + r.watched_seconds, 0) / 3600)}h
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Horas vistas</p>
+                      </div>
+                    </div>
+
+                    {/* Course list */}
+                    {progressRows.map((row) => {
+                      const pct = row.total_seconds > 0
+                        ? Math.min(100, Math.round((row.watched_seconds / row.total_seconds) * 100))
+                        : 0;
+                      return (
+                        <div key={row.id} className="glass-card rounded-xl p-4 flex items-center gap-4">
+                          {row.course_thumbnail && (
+                            <div className="w-14 h-10 rounded-lg overflow-hidden shrink-0">
+                              <AppImage
+                                src={row.course_thumbnail}
+                                alt={row.course_thumbnail_alt || row.course_title}
+                                width={56}
+                                height={40}
+                                className="object-cover w-full h-full"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-600 text-foreground truncate">{row.course_title}</p>
+                            <p className="text-xs text-muted-foreground mb-2">{row.course_instructor}</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-primary rounded-full transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground shrink-0">{pct}%</span>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-600 text-foreground">{notif.label}</p>
-                            <p className="text-xs text-muted-foreground">{notif.desc}</p>
-                          </div>
-                        </label>
-                    )}
-                    </div>
+                          {row.completed && (
+                            <Icon name="CheckCircleIcon" size={18} className="text-green-400 shrink-0" variant="solid" />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  <div className="flex items-center gap-3 pt-2">
-                    <button
-                    type="submit"
-                    disabled={saving}
-                    className="btn-primary px-6 py-2.5 text-sm font-700 flex items-center gap-2 disabled:opacity-60">
-                    
-                      {saving ?
-                    <><Icon name="ArrowPathIcon" size={15} className="animate-spin" /> Guardando…</> :
-
-                    'Guardar Cambios'
-                    }
-                    </button>
-                    <button type="button" className="btn-ghost px-5 py-2.5 text-sm font-600">
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
-            }
+            )}
 
-            {/* SUSCRIPCIÓN */}
-            {section === 'suscripcion' &&
-            <div className="flex flex-col gap-5">
-                {/* Current plan card */}
-                <div className="bg-card border border-primary/20 rounded-2xl p-6">
-                  <div className="flex items-start justify-between flex-wrap gap-4 mb-5">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <h2 className="text-lg font-700 text-foreground">Plan Actual</h2>
-                        {userTier && <TierBadge tier={userTier as any} size="md" showIcon />}
+            {/* ── DOWNLOADS ── */}
+            {section === 'descargas' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Mis Descargas</h2>
+                {downloadsLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="glass-card rounded-xl p-4 animate-pulse">
+                        <div className="h-4 bg-muted rounded w-48" />
                       </div>
-                      <p className="text-sm text-muted-foreground">Próxima renovación: <span className="text-foreground font-600">1 agosto 2026</span></p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                      onClick={() => setShowCancelModal(true)}
-                      className="text-xs text-red-400 hover:text-red-300 font-600 transition-colors">
-                      
-                        Cancelar suscripción
-                      </button>
-                    </div>
+                    ))}
                   </div>
-
-                  {/* Usage stats */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {[
-                  { label: 'Horas vistas', value: statsLoading ? '…' : formatWatchTime(watchedSeconds), icon: 'PlayCircleIcon', color: 'text-primary' },
-                  { label: 'Cursos iniciados', value: statsLoading ? '…' : String(coursesInProgress), icon: 'BookOpenIcon', color: 'text-blue-400' },
-                  { label: 'Descargas usadas', value: '0 / ∞', icon: 'ArrowDownTrayIcon', color: 'text-emerald-400' },
-                  { label: 'Certificados', value: statsLoading ? '…' : String(certificatesCount), icon: 'TrophyIcon', color: 'text-amber-400' }].
-                  map((stat) =>
-                  <div key={`usage-${stat.label}`} className="bg-muted/40 rounded-xl p-3.5">
-                        <Icon name={stat.icon as any} size={18} className={`${stat.color} mb-2`} />
-                        <div className="text-xl font-800 text-foreground">{stat.value}</div>
-                        <div className="text-xs text-muted-foreground">{stat.label}</div>
-                      </div>
-                  )}
-                  </div>
-                </div>
-
-                {/* Upgrade CTA — only show if not on diafragma */}
-                {userTier !== 'diafragma' && (
-                <div className="bg-gradient-to-br from-purple-500/10 to-card border border-purple-500/20 rounded-2xl p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl tier-badge-diafragma flex items-center justify-center shrink-0">
-                      <Icon name="SparklesIcon" size={22} className="text-purple-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-base font-700 text-foreground mb-1">Actualiza al Plan Diafragma</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Desbloquea talleres en vivo mensuales, revisión de portafolio, certificaciones y acceso offline por solo $18 más al mes.
+                ) : downloads.length === 0 ? (
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                      <Icon name="ArrowDownTrayIcon" size={32} className="text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        Los archivos descargables aparecerán aquí cuando accedas a cursos con material complementario.
                       </p>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {['Talleres en Vivo', 'Revisión de Portafolio', 'Certificaciones', 'Acceso Offline', 'Sesiones Q&A'].map((feat) =>
-                      <span key={`upgrade-feat-${feat}`} className="text-xs tier-badge-diafragma px-2 py-0.5 rounded-full font-600">
-                            {feat}
-                          </span>
-                      )}
-                      </div>
-                      <Link
-                      href="/sign-up-login"
-                      className="btn-primary inline-flex items-center gap-2 px-5 py-2.5 text-sm font-700">
-                      
-                        <Icon name="ArrowUpCircleIcon" size={16} />
-                        Actualizar a Diafragma — $36/mes
+                      <Link href="/dashboard" className="btn-ghost px-5 py-2 text-sm">
+                        Explorar Cursos
                       </Link>
                     </div>
                   </div>
-                </div>
-                )}
-              </div>
-            }
-
-            {/* FACTURACIÓN */}
-            {section === 'facturacion' &&
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                  <div>
-                    <h2 className="text-lg font-700 text-foreground">Historial de Pagos</h2>
-                    <p className="text-sm text-muted-foreground">Visa terminada en 4821 · Próximo cargo: $18.00 el 1 ago 2026</p>
-                  </div>
-                  <button className="btn-ghost px-4 py-2 text-sm font-600 flex items-center gap-2">
-                    <Icon name="PencilIcon" size={14} />
-                    Cambiar método
-                  </button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        {['Fecha', 'Descripción', 'Método', 'Monto', 'Estado', ''].map((col) =>
-                      <th key={`invoice-col-${col}`} className="text-left px-5 py-3 text-xs font-700 text-muted-foreground uppercase tracking-wider">
-                            {col}
-                          </th>
-                      )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map((inv) =>
-                    <tr key={inv.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3.5 text-sm text-foreground font-mono">{inv.date}</td>
-                          <td className="px-5 py-3.5 text-sm text-foreground">
-                            Glewstudio — Plan {inv.plan}
-                          </td>
-                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{inv.method}</td>
-                          <td className="px-5 py-3.5 text-sm font-700 text-foreground font-mono">{inv.amount}</td>
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-600 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-                              {inv.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <button className="text-xs text-primary hover:text-accent font-600 transition-colors flex items-center gap-1">
-                              <Icon name="ArrowDownTrayIcon" size={12} />
-                              PDF
-                            </button>
-                          </td>
-                        </tr>
-                    )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            }
-
-            {/* DESCARGAS */}
-            {section === 'descargas' &&
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-border">
-                  <h2 className="text-lg font-700 text-foreground mb-0.5">Archivos Descargados</h2>
-                  <p className="text-sm text-muted-foreground">{downloads.length} archivos · Descargas ilimitadas con Plan Obturador</p>
-                </div>
-                <div className="divide-y divide-border">
-                  {downloads.map((dl) =>
-                <div key={dl.id} className="flex items-center gap-4 px-6 py-4 hover:bg-muted/20 transition-colors">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                  dl.type === 'RAW' ? 'bg-primary/10' :
-                  dl.type === 'PDF' ? 'bg-blue-500/10' : 'bg-emerald-500/10'}`
-                  }>
-                        <Icon
-                      name="DocumentArrowDownIcon"
-                      size={18}
-                      className={
-                      dl.type === 'RAW' ? 'text-primary' :
-                      dl.type === 'PDF' ? 'text-blue-400' : 'text-emerald-400'
-                      } />
-                    
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-600 text-foreground truncate">{dl.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{dl.course}</p>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
-                        <span className="font-mono">{dl.date}</span>
-                        <span>{dl.size}</span>
-                        <span className={`font-700 px-2 py-0.5 rounded-full ${
-                    dl.type === 'RAW' ? 'bg-primary/10 text-primary' :
-                    dl.type === 'PDF' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`
-                    }>
-                          {dl.type}
-                        </span>
-                      </div>
-                      <button
-                    onClick={() => toast.success(`Descargando ${dl.name}…`)}
-                    className="shrink-0 w-8 h-8 rounded-lg bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={`Volver a descargar ${dl.name}`}>
-                    
-                        <Icon name="ArrowDownTrayIcon" size={14} />
-                      </button>
-                    </div>
-                )}
-                </div>
-              </div>
-            }
-
-            {/* CERTIFICADOS */}
-            {section === 'certificados' &&
-            <div className="flex flex-col gap-5">
-                {statsLoading ? (
-                  <div className="bg-card border border-border rounded-2xl p-12 text-center">
-                    <Icon name="ArrowPathIcon" size={32} className="text-muted-foreground mx-auto mb-4 animate-spin" />
-                    <p className="text-sm text-muted-foreground">Cargando certificados…</p>
-                  </div>
-                ) : completedCourses.length === 0 ?
-              <div className="bg-card border border-border rounded-2xl p-12 text-center">
-                    <Icon name="TrophyIcon" size={40} className="text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-700 text-foreground mb-2">Sin certificados aún</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Completa un curso para recibir tu certificado digital. Los certificados están disponibles en todos los planes.
-                    </p>
-                    <Link href="/dashboard" className="btn-primary px-5 py-2.5 text-sm font-700 inline-flex">
-                      Explorar Cursos
-                    </Link>
-                  </div> :
-
-              <>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">{completedCourses.length} certificados obtenidos</p>
-                    </div>
-                    {completedCourses.map((cert) =>
-                <div key={cert.id} className="bg-card border border-border rounded-2xl p-5 flex items-start gap-5">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20 flex items-center justify-center shrink-0">
-                          <Icon name="TrophyIcon" size={26} className="text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-700 text-foreground mb-1">{cert.course_title}</h3>
-                          {cert.course_instructor && (
-                            <p className="text-sm text-muted-foreground mb-1">Instructor: {cert.course_instructor}</p>
-                          )}
-                          {cert.completed_at && (
-                            <p className="text-xs text-muted-foreground mb-3">
-                              Completado el {new Date(cert.completed_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })} · ID: <span className="font-mono text-foreground">{cert.course_id.toUpperCase()}</span>
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <button
-                        onClick={() => toast.success('Certificado descargado')}
-                        className="btn-primary px-4 py-1.5 text-xs font-700 flex items-center gap-1.5">
-                        
-                              <Icon name="ArrowDownTrayIcon" size={13} />
-                              Descargar PDF
-                            </button>
-                            <button
-                        onClick={() => toast.success('Enlace copiado al portapapeles')}
-                        className="btn-ghost px-4 py-1.5 text-xs font-600 flex items-center gap-1.5">
-                        
-                              <Icon name="ShareIcon" size={13} />
-                              Compartir
-                            </button>
+                ) : (
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="divide-y divide-border">
+                      {downloads.map((dl) => (
+                        <div key={dl.id} className="flex items-center gap-4 px-5 py-3.5">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Icon name="DocumentArrowDownIcon" size={16} className="text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-500 text-foreground truncate">{dl.file_name}</p>
+                            <p className="text-xs text-muted-foreground">{dl.course_title}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-xs font-600 text-muted-foreground uppercase">{dl.file_type}</span>
+                            {dl.file_size && (
+                              <p className="text-xs text-muted-foreground">{dl.file_size}</p>
+                            )}
                           </div>
                         </div>
-                      </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
+              </div>
+            )}
 
-                    {/* Upgrade prompt for more certs */}
-                    {userTier !== 'diafragma' && (
-                    <div className="bg-muted/30 border border-border rounded-2xl p-5 flex items-center gap-4">
-                      <Icon name="LockClosedIcon" size={20} className="text-muted-foreground shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-sm font-600 text-foreground mb-0.5">Certificaciones de Rutas Completas</p>
-                        <p className="text-xs text-muted-foreground">Las certificaciones de rutas de aprendizaje completas requieren el Plan Diafragma.</p>
-                      </div>
-                      <Link href="/sign-up-login" className="btn-ghost px-3 py-1.5 text-xs font-600 shrink-0">
-                        Actualizar
+            {/* ── BILLING (COMING SOON) ── */}
+            {section === 'facturacion' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Facturación</h2>
+                {/* 
+                  ARCHITECTURE NOTE (Phase 9):
+                  This section is reserved for future billing integration.
+                  When payments are implemented (Phase 9), connect:
+                    - payments table (payment records)
+                    - payment_events table (webhook events)
+                    - subscriptions table (billing cycle, renewal dates)
+                    - course_purchases table (one-time purchases)
+                  Do NOT add mock data here. Real data only when payments are live.
+                */}
+                <div className="glass-card rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Icon name="ReceiptPercentIcon" size={28} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-700 text-foreground mb-2">Facturación — Próximamente</h3>
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      El historial de pagos, facturas y recibos estarán disponibles cuando se active el sistema de pagos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 px-4 py-2 rounded-lg bg-muted/50 border border-border">
+                    <Icon name="LockClosedIcon" size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Disponible en una próxima actualización</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── CERTIFICATES ── */}
+            {section === 'certificados' && (
+              <div>
+                <h2 className="text-lg font-700 text-foreground mb-6">Mis Certificados</h2>
+                {completedCourses.length === 0 ? (
+                  <div className="glass-card rounded-2xl overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-16 gap-4">
+                      <Icon name="TrophyIcon" size={32} className="text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        Completa cursos para obtener tus certificados digitales.
+                      </p>
+                      <Link href="/dashboard" className="btn-ghost px-5 py-2 text-sm">
+                        Ver Cursos
                       </Link>
                     </div>
-                    )}
-                  </>
-              }
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {completedCourses.map((row) => (
+                      <div key={row.id} className="glass-card rounded-2xl p-5 border border-primary/20">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Icon name="TrophyIcon" size={18} className="text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-700 text-foreground truncate">{row.course_title}</p>
+                            <p className="text-xs text-muted-foreground">{row.course_instructor}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            Completado {new Date(row.updated_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          </p>
+                          <button className="btn-ghost px-3 py-1.5 text-xs font-600 flex items-center gap-1.5">
+                            <Icon name="ArrowDownTrayIcon" size={12} />
+                            Descargar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            }
+            )}
+
           </div>
         </div>
       </div>
-
-      {/* Cancel subscription modal */}
-      {showCancelModal &&
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setShowCancelModal(false)} />
-          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-sm animate-scale-in">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
-              <Icon name="ExclamationTriangleIcon" size={22} className="text-red-400" />
-            </div>
-            <h3 className="text-lg font-700 text-foreground text-center mb-2">¿Cancelar suscripción?</h3>
-            <p className="text-sm text-muted-foreground text-center mb-6 leading-relaxed">
-              Perderás acceso a todos los cursos avanzados, descargas y tu historial de progreso al finalizar el período actual el <span className="text-foreground font-600">1 agosto 2026</span>.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-              onClick={() => {
-                setShowCancelModal(false);
-                toast.error(`Suscripción cancelada. Acceso activo hasta el 1 ago 2026.`);
-              }}
-              className="w-full py-2.5 text-sm font-700 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors">
-              
-                Sí, cancelar suscripción
-              </button>
-              <button
-              onClick={() => setShowCancelModal(false)}
-              className="btn-primary w-full py-2.5 text-sm font-700">
-              
-                Mantener mi Plan {tierLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      }
-    </div>);
-
+    </div>
+  );
 }

@@ -35,3 +35,19 @@ jest-test-results.json
 
 # Optional: if using TurboRepo or monorepo
 turbo/
+
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+# NEVER commit real secrets to version control.
+# .env.local is the recommended file for local secrets.
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# .env may contain placeholder values committed intentionally.
+# If it ever contains real secrets, add it here:
+# .env
+
+# Supabase local dev
+supabase/.branches
+supabase/.temp

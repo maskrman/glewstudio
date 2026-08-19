@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Icon from '@/components/ui/AppIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { MEMBERSHIP_PRICES, MEMBERSHIP_FEATURES } from '@/lib/config';
 
 interface PlanDetail {
   name: string;
@@ -20,26 +21,26 @@ const planDetails: Record<string, PlanDetail> = {
   apertura: {
     name: 'Apertura',
     subtitle: 'Plan Básico',
-    price: 9,
+    price: MEMBERSHIP_PRICES.apertura.monthly,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-apertura',
-    features: ['Librería básica e intermedia (80+ cursos)', 'Calidad HD 720p / 1080p', 'Acceso desde cualquier dispositivo', 'Comunidad de estudiantes'],
+    features: MEMBERSHIP_FEATURES.apertura,
   },
   obturador: {
     name: 'Obturador',
     subtitle: 'Plan Pro',
-    price: 18,
+    price: MEMBERSHIP_PRICES.obturador.monthly,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-obturador',
-    features: ['Todo lo del Plan Apertura', 'Cursos avanzados y Masterclasses', 'Calidad Full HD / 4K', 'Descarga de archivos RAW de práctica', 'Presets de Lightroom y LUTs'],
+    features: MEMBERSHIP_FEATURES.obturador,
   },
   diafragma: {
     name: 'Diafragma',
     subtitle: 'Plan Master VIP',
-    price: 36,
+    price: MEMBERSHIP_PRICES.diafragma.monthly,
     billingCycle: 'annual',
     badgeClass: 'tier-badge-diafragma',
-    features: ['Todo lo del Plan Obturador', 'Talleres en vivo mensuales', 'Revisión y retroalimentación de portafolio', 'Certificaciones digitales', 'Sesiones Q&A con instructores'],
+    features: MEMBERSHIP_FEATURES.diafragma,
   },
 };
 
