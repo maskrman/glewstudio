@@ -1,0 +1,47 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+
+export default function HeroSection() {
+  return (
+    <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
+      {/* GIF de fondo desde Google Drive */}
+      <img
+        src="https://lh3.googleusercontent.com/d/1johwz1cQISIyaG4vtN-ikL_RHOlfKVE-"
+        alt="Glew Studio Background"
+        className="absolute inset-0 w-full h-full object-cover object-center z-0"
+      />
+
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50 z-10" />
+
+      {/* Centered content */}
+      <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 max-w-3xl mx-auto">
+        <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
+          Esto es Glew Studio
+        </h1>
+
+        <p className="text-lg text-white mb-10 leading-relaxed">
+          Accede a nuevos cursos cada mes y domina la fotografía con los mejores instructores del mundo.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <Link
+            href="/sign-up-login"
+            className="px-8 py-3 bg-white text-black font-semibold text-base rounded hover:bg-gray-100 transition-colors"
+          >
+            Empieza tu Suscripción Mensual
+          </Link>
+
+          <Link
+            href="/courses"
+            className="px-8 py-3 bg-transparent text-white font-semibold text-base rounded border border-white hover:bg-white/10 transition-colors"
+          >
+            Explora todos los cursos
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
