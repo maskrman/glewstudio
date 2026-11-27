@@ -476,6 +476,117 @@ export interface Database {
           metadata?: Record<string, unknown> | null;
         };
       };
+      instructors: {
+        Row: {
+          id: string;
+          name: string;
+          specialty: string | null;
+          tags: string[] | null;
+          bio: string | null;
+          photo_url: string | null;
+          photo_alt: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          specialty?: string | null;
+          tags?: string[] | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          photo_alt?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          specialty?: string | null;
+          tags?: string[] | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          photo_alt?: string | null;
+          updated_at?: string;
+        };
+      };
+      membership_plans: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          badge: string | null;
+          monthly_price: number;
+          annual_monthly_price: number;
+          premium_discount_percent: number;
+          features: Json;
+          is_popular: boolean;
+          stripe_monthly_price_id: string | null;
+          stripe_annual_price_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          badge?: string | null;
+          monthly_price?: number;
+          annual_monthly_price?: number;
+          premium_discount_percent?: number;
+          features?: Json;
+          is_popular?: boolean;
+          stripe_monthly_price_id?: string | null;
+          stripe_annual_price_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          slug?: string;
+          name?: string;
+          badge?: string | null;
+          monthly_price?: number;
+          annual_monthly_price?: number;
+          premium_discount_percent?: number;
+          features?: Json;
+          is_popular?: boolean;
+          stripe_monthly_price_id?: string | null;
+          stripe_annual_price_id?: string | null;
+          updated_at?: string;
+        };
+      };
+      coupons: {
+        Row: {
+          id: string;
+          code: string;
+          discount_percent: number;
+          max_uses: number;
+          current_uses: number;
+          expires_at: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          discount_percent: number;
+          max_uses?: number;
+          current_uses?: number;
+          expires_at?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          discount_percent?: number;
+          max_uses?: number;
+          current_uses?: number;
+          expires_at?: string | null;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

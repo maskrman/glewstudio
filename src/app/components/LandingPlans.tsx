@@ -1,77 +1,266 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 import { MEMBERSHIP_PRICES, MEMBERSHIP_FEATURES, MEMBERSHIP_DISCOUNTS } from '@/lib/config';
+import { getPublicMembershipPlans, type MembershipPlan } from '@/app/admin/actions/membership';
+import { createClient } from '@/lib/supabase/client';
 
-const plans = [
-  {
-    id: 'free',
-    name: 'Free',
-    subtitle: 'Explorador',
-    price: { monthly: 0, annual: 0 },
-    color: 'bg-muted text-muted-foreground border border-border',
-    borderColor: 'border-border',
-    highlightColor: '',
-    recommended: false,
-    features: [
-      { text: 'Crear cuenta gratuita', included: true },
-      { text: 'Acceso al catálogo completo de Cursos', included: true },
-      { text: 'Ver trailers de todos los cursos', included: true },
-      { text: 'Ver contenido gratuito', included: true },
-      { text: 'Guardar cursos en Mi Lista', included: true },
-      { text: 'Acceso a cursos de membresía', included: false },
-      { text: 'Descuentos en cursos premium', included: false },
-      { text: 'Material complementario', included: false },
-    ],
-  },
-  {
-    id: 'apertura',
-    name: 'Apertura',
-    subtitle: 'Membresía Básica',
-    price: MEMBERSHIP_PRICES?.apertura,
-    color: 'tier-badge-apertura',
-    borderColor: 'border-blue-500/30',
-    highlightColor: 'bg-blue-500/5',
-    recommended: false,
-    discount: MEMBERSHIP_DISCOUNTS?.apertura,
-    features: MEMBERSHIP_FEATURES?.apertura?.map((text) => ({ text, included: true })),
-  },
-  {
-    id: 'obturador',
-    name: 'Obturador',
-    subtitle: 'Membresía Pro',
-    price: MEMBERSHIP_PRICES?.obturador,
-    color: 'tier-badge-obturador',
-    borderColor: 'border-primary/50',
-    highlightColor: 'bg-primary/5',
-    recommended: true,
-    discount: MEMBERSHIP_DISCOUNTS?.obturador,
-    features: MEMBERSHIP_FEATURES?.obturador?.map((text) => ({ text, included: true })),
-  },
-  {
-    id: 'diafragma',
-    name: 'Diafragma',
-    subtitle: 'Membresía Master',
-    price: MEMBERSHIP_PRICES?.diafragma,
-    color: 'tier-badge-diafragma',
-    borderColor: 'border-purple-500/40',
-    highlightColor: 'bg-purple-500/5',
-    recommended: false,
-    discount: MEMBERSHIP_DISCOUNTS?.diafragma,
-    features: MEMBERSHIP_FEATURES?.diafragma?.map((text) => ({ text, included: true })),
-  },
-];
+interface Plan {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: { monthly: number; annual: number; annualTotal?: number };
+  color: string;
+  borderColor: string;
+  highlightColor: string;
+  recommended: boolean;
+  discount?: number;
+  features: { text: string; included: boolean }[];
+}
+
+function transformPlans(dbPlans: MembershipPlan[]): Plan[] {
+  return [
+    {
+      id: 'free',
+      name: 'Free',
+      subtitle: 'Explorador',
+      price: { monthly: 0, annual: 0 },
+      color: 'bg-muted text-muted-foreground border border-border',
+      borderColor: 'border-border',
+      highlightColor: '',
+      recommended: false,
+      features: [
+        { text: 'Crear cuenta gratuita', included: true },
+        { text: 'Acceso al catálogo completo de Cursos', included: true },
+        { text: 'Ver trailers de todos los cursos', included: true },
+        { text: 'Ver contenido gratuito', included: true },
+        { text: 'Guardar cursos en Mi Lista', included: true },
+        { text: 'Acceso a cursos de membresía', included: false },
+        { text: 'Descuentos en cursos premium', included: false },
+        { text: 'Material complementario', included: false },
+      ],
+    },
+    ...dbPlans.map((dbPlan: MembershipPlan) => ({
+      id: dbPlan.slug,
+      name: dbPlan.name,
+      subtitle: dbPlan.badge || 'Membresía',
+      price: {
+        monthly: dbPlan.monthly_price,
+        annual: dbPlan.annual_monthly_price,
+        annualTotal: Math.round(dbPlan.annual_monthly_price * 12 * 100) / 100,
+      },
+      color: `tier-badge-${dbPlan.slug}`,
+      borderColor:
+        dbPlan.slug === 'apertura'
+          ? 'border-blue-500/30'
+          : dbPlan.slug === 'obturador'
+            ? 'border-primary/50'
+            : 'border-purple-500/40',
+      highlightColor:
+        dbPlan.slug === 'apertura'
+          ? 'bg-blue-500/5'
+          : dbPlan.slug === 'obturador'
+            ? 'bg-primary/5'
+            : 'bg-purple-500/5',
+      recommended: dbPlan.is_popular,
+      discount: dbPlan.premium_discount_percent,
+      features:
+        (dbPlan.features as string[])?.map((text: string) => ({ text, included: true })) || [],
+    })),
+  ];
+}
 
 export default function LandingPlans() {
   const [annual, setAnnual] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const supabase = createClient();
+
+    async function loadPlans() {
+      try {
+        const dbPlans = await getPublicMembershipPlans();
+
+        if (!mounted) return;
+
+        if (dbPlans && dbPlans.length > 0) {
+          setPlans(transformPlans(dbPlans));
+        } else {
+          // Fallback to config values
+          const fallbackPlans: Plan[] = [
+            {
+              id: 'free',
+              name: 'Free',
+              subtitle: 'Explorador',
+              price: { monthly: 0, annual: 0 },
+              color: 'bg-muted text-muted-foreground border border-border',
+              borderColor: 'border-border',
+              highlightColor: '',
+              recommended: false,
+              features: [
+                { text: 'Crear cuenta gratuita', included: true },
+                { text: 'Acceso al catálogo completo de Cursos', included: true },
+                { text: 'Ver trailers de todos los cursos', included: true },
+                { text: 'Ver contenido gratuito', included: true },
+                { text: 'Guardar cursos en Mi Lista', included: true },
+                { text: 'Acceso a cursos de membresía', included: false },
+                { text: 'Descuentos en cursos premium', included: false },
+                { text: 'Material complementario', included: false },
+              ],
+            },
+            {
+              id: 'apertura',
+              name: 'Apertura',
+              subtitle: 'Membresía Básica',
+              price: MEMBERSHIP_PRICES?.apertura,
+              color: 'tier-badge-apertura',
+              borderColor: 'border-blue-500/30',
+              highlightColor: 'bg-blue-500/5',
+              recommended: false,
+              discount: MEMBERSHIP_DISCOUNTS?.apertura,
+              features:
+                MEMBERSHIP_FEATURES?.apertura?.map((text) => ({ text, included: true })) || [],
+            },
+            {
+              id: 'obturador',
+              name: 'Obturador',
+              subtitle: 'Membresía Pro',
+              price: MEMBERSHIP_PRICES?.obturador,
+              color: 'tier-badge-obturador',
+              borderColor: 'border-primary/50',
+              highlightColor: 'bg-primary/5',
+              recommended: true,
+              discount: MEMBERSHIP_DISCOUNTS?.obturador,
+              features:
+                MEMBERSHIP_FEATURES?.obturador?.map((text) => ({ text, included: true })) || [],
+            },
+            {
+              id: 'diafragma',
+              name: 'Diafragma',
+              subtitle: 'Membresía Master',
+              price: MEMBERSHIP_PRICES?.diafragma,
+              color: 'tier-badge-diafragma',
+              borderColor: 'border-purple-500/40',
+              highlightColor: 'bg-purple-500/5',
+              recommended: false,
+              discount: MEMBERSHIP_DISCOUNTS?.diafragma,
+              features:
+                MEMBERSHIP_FEATURES?.diafragma?.map((text) => ({ text, included: true })) || [],
+            },
+          ];
+          setPlans(fallbackPlans);
+        }
+      } catch (error) {
+        console.error('Error loading membership plans:', error);
+        // Fallback to config values on error
+        const fallbackPlans: Plan[] = [
+          {
+            id: 'free',
+            name: 'Free',
+            subtitle: 'Explorador',
+            price: { monthly: 0, annual: 0 },
+            color: 'bg-muted text-muted-foreground border border-border',
+            borderColor: 'border-border',
+            highlightColor: '',
+            recommended: false,
+            features: [
+              { text: 'Crear cuenta gratuita', included: true },
+              { text: 'Acceso al catálogo completo de Cursos', included: true },
+              { text: 'Ver trailers de todos los cursos', included: true },
+              { text: 'Ver contenido gratuito', included: true },
+              { text: 'Guardar cursos en Mi Lista', included: true },
+              { text: 'Acceso a cursos de membresía', included: false },
+              { text: 'Descuentos en cursos premium', included: false },
+              { text: 'Material complementario', included: false },
+            ],
+          },
+          {
+            id: 'apertura',
+            name: 'Apertura',
+            subtitle: 'Membresía Básica',
+            price: MEMBERSHIP_PRICES?.apertura,
+            color: 'tier-badge-apertura',
+            borderColor: 'border-blue-500/30',
+            highlightColor: 'bg-blue-500/5',
+            recommended: false,
+            discount: MEMBERSHIP_DISCOUNTS?.apertura,
+            features:
+              MEMBERSHIP_FEATURES?.apertura?.map((text) => ({ text, included: true })) || [],
+          },
+          {
+            id: 'obturador',
+            name: 'Obturador',
+            subtitle: 'Membresía Pro',
+            price: MEMBERSHIP_PRICES?.obturador,
+            color: 'tier-badge-obturador',
+            borderColor: 'border-primary/50',
+            highlightColor: 'bg-primary/5',
+            recommended: true,
+            discount: MEMBERSHIP_DISCOUNTS?.obturador,
+            features:
+              MEMBERSHIP_FEATURES?.obturador?.map((text) => ({ text, included: true })) || [],
+          },
+          {
+            id: 'diafragma',
+            name: 'Diafragma',
+            subtitle: 'Membresía Master',
+            price: MEMBERSHIP_PRICES?.diafragma,
+            color: 'tier-badge-diafragma',
+            borderColor: 'border-purple-500/40',
+            highlightColor: 'bg-purple-500/5',
+            recommended: false,
+            discount: MEMBERSHIP_DISCOUNTS?.diafragma,
+            features:
+              MEMBERSHIP_FEATURES?.diafragma?.map((text) => ({ text, included: true })) || [],
+          },
+        ];
+        setPlans(fallbackPlans);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPlans();
+
+    // Subscribe to Realtime changes on membership_plans table
+    const channel = supabase
+      .channel('membership-plans-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'membership_plans',
+        },
+        () => {
+          if (mounted) {
+            loadPlans();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
-    <section id="planes" className="py-20 bg-secondary/30">
+    <section id="planes" className="relative z-10 py-20 lg:py-28 bg-secondary/30">
+      {/* Subtle radial gradient for depth */}
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_50%_0%,rgba(251,191,36,0.05)_0%,transparent_60%),radial-gradient(ellipse_at_80%_100%,rgba(217,119,6,0.04)_0%,transparent_50%)]" />
+
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
         <div className="text-center mb-12">
-          <h2 className="text-hero-md font-800 text-foreground mb-4">Elige tu Nivel de Acceso</h2>
+          <h2 className="text-hero-md font-800 text-foreground mb-4 relative inline-block">
+            Elige tu Nivel de Acceso
+            <span className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-24 h-0.5 bg-gradient-to-r from-amber-500 to-transparent" />
+          </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto mb-3">
             Comienza gratis y escala cuando estés listo. Los cursos premium pueden adquirirse
             individualmente — las membresías te dan descuentos y acceso a contenido exclusivo.
@@ -177,7 +366,7 @@ export default function LandingPlans() {
               </ul>
 
               <Link
-                href="/sign-up-login"
+                href={plan?.id === 'free' ? '/sign-up-login?plan=free' : '/sign-up-login'}
                 className={`w-full py-3 text-sm font-700 text-center rounded-xl transition-all ${
                   plan?.recommended
                     ? 'btn-primary'

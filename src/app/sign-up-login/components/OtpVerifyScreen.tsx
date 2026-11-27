@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
@@ -177,10 +178,10 @@ export default function OtpVerifyScreen({
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8 justify-center">
+        <Link href="/" className="flex items-center gap-2 mb-8 justify-center focus-ring">
           <AppLogo size={32} />
           <span className="font-extrabold text-lg text-foreground">Glewstudio</span>
-        </div>
+        </Link>
 
         <div className="bg-card border border-border rounded-2xl p-8">
           {/* Icon */}

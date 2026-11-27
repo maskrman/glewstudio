@@ -15,7 +15,7 @@ interface TopbarProps {
 const navLinks = [
   { label: 'Inicio', href: '/dashboard' },
   { label: 'Cursos', href: '/courses' },
-  { label: 'En Vivo', href: '/dashboard' },
+  { label: 'En Curso', href: '/en-curso' },
   { label: 'Mi Lista', href: '/watchlist' },
 ];
 
@@ -128,7 +128,7 @@ export default function Topbar({ currentPath = '' }: TopbarProps) {
     return (
       <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/70 to-transparent">
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16 h-16 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <AppLogo size={32} />
             <span className="font-extrabold text-lg tracking-tight text-foreground hidden sm:block">
               Glewstudio
@@ -151,7 +151,7 @@ export default function Topbar({ currentPath = '' }: TopbarProps) {
       >
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <AppLogo size={32} />
             <span className="font-extrabold text-lg tracking-tight text-foreground hidden sm:block">
               Glewstudio
@@ -375,7 +375,7 @@ export default function Topbar({ currentPath = '' }: TopbarProps) {
             ) : (
               // Not authenticated - show sign up
               <Link
-                href="/sign-up-login"
+                href="/sign-up-login?plan=free"
                 className="hidden md:flex btn-primary px-4 py-1.5 text-sm"
               >
                 Comenzar Gratis
@@ -400,10 +400,14 @@ export default function Topbar({ currentPath = '' }: TopbarProps) {
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
           <div className="relative ml-auto w-72 h-full bg-card flex flex-col animate-slide-up">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="flex items-center gap-2"
+                onClick={() => setMobileOpen(false)}
+              >
                 <AppLogo size={28} />
                 <span className="font-extrabold text-base text-foreground">Glewstudio</span>
-              </div>
+              </Link>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="text-muted-foreground hover:text-foreground focus-ring"
@@ -443,7 +447,7 @@ export default function Topbar({ currentPath = '' }: TopbarProps) {
               ) : (
                 <>
                   <Link
-                    href="/sign-up-login"
+                    href="/sign-up-login?plan=free"
                     className="btn-primary px-4 py-2.5 text-sm text-center"
                     onClick={() => setMobileOpen(false)}
                   >

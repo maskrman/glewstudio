@@ -1,156 +1,191 @@
+'use client';
+
 import React from 'react';
+import Link from 'next/link';
 import CourseCarousel from '@/components/ui/CourseCarousel';
+import AppImage from '@/components/ui/AppImage';
+import Icon from '@/components/ui/AppIcon';
+import TierBadge from '@/components/ui/TierBadge';
+import { useLandingData } from './LandingContext';
+import type { LandingCourse } from '@/app/actions/landing';
 
-const trendingCourses = [
-  {
-    id: 'landing-trend-001',
-    title: 'Iluminación Rembrandt para Retrato',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1d731ee8d-1779952599495.png',
-    thumbnailAlt: 'Retrato de estudio con iluminación Rembrandt',
-    duration: '14:32',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-trend-002',
-    title: 'Retoque de Piel en Photoshop CC',
-    instructor: 'Sofía Reyes',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1aa26c31d-1785844143724.png',
-    thumbnailAlt: 'Edición profesional de un retrato en Photoshop',
-    duration: '22:15',
-    tier: 'apertura' as const,
-  },
-  {
-    id: 'landing-trend-003',
-    title: 'Fotografía de Producto en Mesa de Luz',
-    instructor: 'Sofía Reyes',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_18c3fcab2-1772196420648.png',
-    thumbnailAlt: 'Producto fotografiado sobre una mesa de luz',
-    duration: '18:44',
-    tier: 'apertura' as const,
-  },
-  {
-    id: 'landing-trend-004',
-    title: 'Color Grading Cinematográfico',
-    instructor: 'Alejandro Vega',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1e45302fc-1783851831373.png',
-    thumbnailAlt: 'Flujo de trabajo de color grading cinematográfico',
-    duration: '31:20',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-trend-005',
-    title: 'Esquemas de Tres Puntos de Luz',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_113c48f0e-1772615974348.png',
-    thumbnailAlt: 'Esquema de iluminación de tres puntos en un estudio',
-    duration: '26:10',
-    tier: 'obturador' as const,
-  },
-];
+// Transform LandingCourse to CarouselCourse format
+function toCarouselCourse(course: LandingCourse) {
+  return {
+    id: course.id,
+    slug: course.slug,
+    title: course.title,
+    instructor: course.instructor,
+    thumbnail: course.thumbnail || '',
+    thumbnailAlt: course.thumbnail_alt || course.title,
+    duration: course.duration,
+    tier: course.tier,
+    rating: course.rating,
+    lessonCount: course.lesson_count,
+  };
+}
 
-const lightingCourses = [
-  {
-    id: 'landing-light-001',
-    title: 'Luz Natural vs Luz Artificial en Estudio',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1708fe872-1787083078550.png',
-    thumbnailAlt: 'Comparación de luz natural y luz de estudio',
-    duration: '45:00',
-    tier: 'apertura' as const,
-  },
-  {
-    id: 'landing-light-002',
-    title: 'Softboxes, Paraguas y Modificadores',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_129426577-1785194268625.png',
-    thumbnailAlt: 'Modificadores de luz dispuestos en un estudio fotográfico',
-    duration: '38:00',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-light-003',
-    title: 'Luz de Borde y Contraluz Dramático',
-    instructor: 'Valentina Cruz',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_18bddf107-1779534745026.png',
-    thumbnailAlt: 'Retrato con iluminación de borde y contraluz',
-    duration: '29:30',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-light-004',
-    title: 'Flash de Alta Velocidad HSS',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_19c438e56-1772196420060.png',
-    thumbnailAlt: 'Gota de agua congelada con flash de alta velocidad',
-    duration: '52:15',
-    tier: 'diafragma' as const,
-  },
-  {
-    id: 'landing-light-005',
-    title: 'Iluminación para Moda Editorial',
-    instructor: 'Carlos Mendoza',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1c7111102-1785194268846.png',
-    thumbnailAlt: 'Montaje de iluminación para una sesión editorial de moda',
-    duration: '1h 10min',
-    tier: 'diafragma' as const,
-  },
-];
+// Large course card for grid view when few courses
+function CourseCardLarge({ course }: { course: LandingCourse }) {
+  return (
+    <Link
+      href={`/course-detail?course=${course.slug}`}
+      className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-500 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10"
+    >
+      {/* Thumbnail 16:9 */}
+      <div className="relative aspect-video overflow-hidden">
+        <AppImage
+          src={course.thumbnail || ''}
+          alt={course.thumbnail_alt || course.title}
+          fill
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute top-3 left-3">
+          <TierBadge tier={course.tier} size="sm" />
+        </div>
+        {course.is_featured && (
+          <div className="absolute top-3 right-3 bg-amber-500 text-black text-xs font-700 px-2 py-1 rounded-full">
+            Destacado
+          </div>
+        )}
+      </div>
 
-const recentCourses = [
-  {
-    id: 'landing-recent-001',
-    title: 'Flujo de Trabajo RAW en Lightroom',
-    instructor: 'Alejandro Vega',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_1ed65725a-1787083076883.png',
-    thumbnailAlt: 'Interfaz de edición RAW en Lightroom',
-    duration: '1h 05min',
-    tier: 'apertura' as const,
-  },
-  {
-    id: 'landing-recent-002',
-    title: 'Dodge & Burn Profesional',
-    instructor: 'Alejandro Vega',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_17fc5741d-1787083076097.png',
-    thumbnailAlt: 'Retoque de retrato con técnica Dodge and Burn',
-    duration: '48:20',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-recent-003',
-    title: 'Fotografía de Joyería y Relojes',
-    instructor: 'Sofía Reyes',
-    thumbnail: 'https://images.unsplash.com/photo-1642697601641-142b68190a91',
-    thumbnailAlt: 'Fotografía macro de un reloj sobre una superficie oscura',
-    duration: '42:00',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-recent-004',
-    title: 'BTS: Sesión Editorial para Vogue MX',
-    instructor: 'Valentina Cruz',
-    thumbnail: 'https://img.rocket.new/generatedImages/rocket_gen_img_19b1925a8-1769680916668.png',
-    thumbnailAlt: 'Equipo preparando una sesión editorial de fotografía',
-    duration: '1h 20min',
-    tier: 'obturador' as const,
-  },
-  {
-    id: 'landing-recent-005',
-    title: 'Gastronomía: Platos Calientes',
-    instructor: 'Sofía Reyes',
-    thumbnail: 'https://images.unsplash.com/photo-1528267696449-7205ebc11414',
-    thumbnailAlt: 'Fotografía gastronómica con iluminación de estudio',
-    duration: '37:15',
-    tier: 'apertura' as const,
-  },
-];
+      {/* Content */}
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-700 text-lg text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+          {course.title}
+        </h3>
+        {course.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-3 flex-1">
+            {course.description}
+          </p>
+        )}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+          <Icon name="UserIcon" size={12} />
+          <span className="truncate">{course.instructor || 'Instructor'}</span>
+          <span>·</span>
+          <Icon name="ClockIcon" size={12} />
+          <span>{course.duration || '—'}</span>
+          {course.lesson_count && (
+            <>
+              <span>·</span>
+              <Icon name="FilmIcon" size={12} />
+              <span>{course.lesson_count} lecciones</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2 pt-3 border-t border-border">
+          <Icon
+            name="ArrowRightIcon"
+            size={14}
+            className="text-primary group-hover:translate-x-1 transition-transform"
+          />
+          <span className="text-sm font-600 text-foreground">Ver curso</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function LandingCategories() {
+  const { data } = useLandingData();
+  const trendingCourses = data?.trendingCourses ?? [];
+  const lightingCourses = data?.lightingCourses ?? [];
+  const recentCourses = data?.recentCourses ?? [];
+
+  // Combine all unique courses
+  const allCoursesMap = new Map<string, LandingCourse>();
+  [...trendingCourses, ...lightingCourses, ...recentCourses].forEach((c) =>
+    allCoursesMap.set(c.id, c)
+  );
+  const allUniqueCourses = Array.from(allCoursesMap.values());
+
+  // Only render if there are courses
+  if (allUniqueCourses.length === 0) {
+    return null;
+  }
+
+  const totalCourses = allUniqueCourses.length;
+  const showGrid = totalCourses < 4;
+
+  // Subtle radial gradient for depth
+  const gradientBg = (
+    <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_20%_0%,rgba(251,191,36,0.05)_0%,transparent_50%),radial-gradient(ellipse_at_80%_100%,rgba(217,119,6,0.04)_0%,transparent_50%)]" />
+  );
+
+  if (showGrid) {
+    // Grid layout for few courses
+    const columns = totalCourses === 1 ? 1 : totalCourses === 2 ? 2 : 3;
+
+    return (
+      <section id="cursos" aria-label="Cursos" className="relative z-10 py-20 lg:py-28">
+        {gradientBg}
+        <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
+          <div className="text-center mb-12">
+            <h2 className="text-hero-md font-800 text-foreground mb-4 relative inline-block">
+              Cursos Disponibles
+              <span className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-24 h-0.5 bg-gradient-to-r from-amber-500 to-transparent" />
+            </h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              {totalCourses} curso{totalCourses !== 1 ? 's' : ''} disponible
+              {totalCourses !== 1 ? 's' : ''} para empezar a aprender hoy.
+            </p>
+          </div>
+          <div
+            className={`grid grid-cols-1 sm:grid-cols-${columns === 1 ? 1 : columns === 2 ? 2 : 3} gap-6 lg:gap-8 max-w-5xl mx-auto`}
+          >
+            {allUniqueCourses.map((course) => (
+              <CourseCardLarge key={course.id} course={course} />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Carousel layout for 4+ courses
   return (
-    <section id="cursos" aria-label="Cursos" className="relative z-10 space-y-12 pb-16 pt-4">
-      <CourseCarousel title="Tendencias" courses={trendingCourses} />
-      <CourseCarousel title="Iluminación Pro" courses={lightingCourses} />
-      <CourseCarousel title="Recientes" courses={recentCourses} />
+    <section id="cursos" aria-label="Cursos" className="relative z-10 py-20 lg:py-28">
+      {gradientBg}
+      <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
+        <div className="text-center mb-12">
+          <h2 className="text-hero-md font-800 text-foreground mb-4 relative inline-block">
+            Catálogo de Cursos
+            <span className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-24 h-0.5 bg-gradient-to-r from-amber-500 to-transparent" />
+          </h2>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Explora todas las categorías y encuentra tu próximo curso.
+          </p>
+        </div>
+        <div className="space-y-12">
+          {trendingCourses.length > 0 && (
+            <CourseCarousel
+              title="Tendencias"
+              courses={trendingCourses.map(toCarouselCourse)}
+              badgeLabel="Tendencia"
+              badgeColor="bg-amber-500/20 text-amber-400 border border-amber-500/30"
+            />
+          )}
+          {lightingCourses.length > 0 && (
+            <CourseCarousel
+              title="Iluminación Pro"
+              courses={lightingCourses.map(toCarouselCourse)}
+              badgeLabel="Pro"
+              badgeColor="bg-blue-500/20 text-blue-400 border border-blue-500/30"
+            />
+          )}
+          {recentCourses.length > 0 && (
+            <CourseCarousel
+              title="Recientes"
+              courses={recentCourses.map(toCarouselCourse)}
+              badgeLabel="Nuevo"
+              badgeColor="bg-green-500/20 text-green-400 border border-green-500/30"
+            />
+          )}
+        </div>
+      </div>
     </section>
   );
 }

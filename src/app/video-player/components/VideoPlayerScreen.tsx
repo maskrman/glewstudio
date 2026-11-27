@@ -785,7 +785,7 @@ export default function VideoPlayerScreen() {
             <span className="text-foreground font-500">Lección {currentLesson?.number || 1}</span>
           </div>
         </div>
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <AppLogo size={24} />
           <span className="font-700 text-sm text-foreground hidden sm:block">Glewstudio</span>
         </Link>

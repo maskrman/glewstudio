@@ -16,6 +16,7 @@ import {
   PAYMENT_CONFIG,
 } from '@/lib/config';
 import { createClient } from '@/lib/supabase/client';
+import { getPublicMembershipPlans, type MembershipPlan } from '@/app/admin/actions/membership';
 import { toast } from 'sonner';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -77,6 +78,10 @@ export default function AccountScreen() {
   // Sign-out state
   const [signingOut, setSigningOut] = useState(false);
 
+  // Membership plans state (for real-time updates)
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) {
@@ -102,6 +107,39 @@ export default function AccountScreen() {
       setStatsLoading(false);
     };
     load();
+
+    // Load membership plans
+    const loadPlans = async () => {
+      try {
+        const dbPlans = await getPublicMembershipPlans();
+        setMembershipPlans(dbPlans);
+      } catch (error) {
+        console.error('Error loading membership plans:', error);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+    loadPlans();
+
+    // Subscribe to Realtime changes on membership_plans table
+    const channel = supabase
+      .channel('membership-plans-changes-account')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'membership_plans',
+        },
+        () => {
+          loadPlans();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load progress when section changes ─────────────────────────────────────
@@ -521,36 +559,95 @@ export default function AccountScreen() {
                   <div>
                     <h3 className="text-sm font-700 text-foreground mb-4">Opciones de Membresía</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {(['apertura', 'obturador', 'diafragma'] as const).map((tier) => (
-                        <div
-                          key={tier}
-                          className={`rounded-xl border p-4 transition-all ${
-                            userTier === tier
-                              ? 'border-primary/50 bg-primary/5'
-                              : 'border-border hover:border-primary/30'
-                          }`}
-                        >
-                          <TierBadge tier={tier} size="sm" showIcon />
-                          <p className="text-xl font-800 gradient-gold-text mt-2">
-                            ${MEMBERSHIP_PRICES[tier].monthly}/mes
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            ${MEMBERSHIP_PRICES[tier].annual}/mes anual
-                          </p>
-                          <p className="text-xs text-primary font-600 mt-2">
-                            {MEMBERSHIP_DISCOUNTS[tier]}% descuento en premium
-                          </p>
-                          {userTier === tier ? (
-                            <span className="mt-3 block text-xs text-center text-primary font-600">
-                              Plan actual
-                            </span>
-                          ) : (
-                            <button className="mt-3 w-full btn-ghost py-1.5 text-xs font-600">
-                              {!userTier ? 'Suscribirse' : 'Cambiar a este plan'}
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      {(membershipPlans.length > 0
+                        ? membershipPlans
+                        : (['apertura', 'obturador', 'diafragma'] as const).map((t) => ({
+                            slug: t,
+                          }))
+                      ).map((plan, index) => {
+                        const isDBPlan = 'monthly_price' in plan;
+                        const slug = isDBPlan ? plan.slug : plan.slug;
+                        const name = isDBPlan
+                          ? plan.name
+                          : slug.charAt(0).toUpperCase() + slug.slice(1);
+                        const badge = isDBPlan ? plan.badge : 'Membresía';
+                        const monthlyPrice = isDBPlan
+                          ? plan.monthly_price
+                          : MEMBERSHIP_PRICES[slug as keyof typeof MEMBERSHIP_PRICES]?.monthly || 0;
+                        const annualPrice = isDBPlan
+                          ? plan.annual_monthly_price
+                          : MEMBERSHIP_PRICES[slug as keyof typeof MEMBERSHIP_PRICES]?.annual || 0;
+                        const discount = isDBPlan
+                          ? plan.premium_discount_percent
+                          : MEMBERSHIP_DISCOUNTS[slug as keyof typeof MEMBERSHIP_DISCOUNTS] || 0;
+                        const isCurrent = userTier === slug;
+                        const tierLabel = isDBPlan
+                          ? plan.name
+                          : TIER_LABELS[slug as keyof typeof TIER_LABELS] || slug;
+                        const features = isDBPlan
+                          ? (plan.features as string[])
+                          : MEMBERSHIP_FEATURES[slug as keyof typeof MEMBERSHIP_FEATURES] || [];
+
+                        return (
+                          <div
+                            key={isDBPlan ? plan.slug : `fallback-${slug}`}
+                            className={`rounded-xl border p-4 transition-all ${
+                              isCurrent
+                                ? 'border-primary/50 bg-primary/5'
+                                : 'border-border hover:border-primary/30'
+                            }`}
+                          >
+                            <TierBadge
+                              tier={slug as 'apertura' | 'obturador' | 'diafragma'}
+                              size="sm"
+                              showIcon
+                            />
+                            <p className="text-sm text-muted-foreground mt-0.5">{badge}</p>
+                            <p className="text-xl font-800 gradient-gold-text mt-2">
+                              ${monthlyPrice}/mes
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              ${annualPrice}/mes anual
+                            </p>
+                            <p className="text-xs text-primary font-600 mt-2">
+                              {discount}% descuento en premium
+                            </p>
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <p className="text-xs font-600 text-muted-foreground mb-2">Incluye</p>
+                              <div className="space-y-1 max-h-32 overflow-hidden">
+                                {features.slice(0, 3).map((feature, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex items-start gap-1.5 text-xs text-muted-foreground"
+                                  >
+                                    <Icon
+                                      name="CheckIcon"
+                                      size={10}
+                                      className="text-primary shrink-0 mt-0.5"
+                                      variant="solid"
+                                    />
+                                    <span>{feature}</span>
+                                  </div>
+                                ))}
+                                {features.length > 3 && (
+                                  <div className="text-xs text-primary font-500 mt-1">
+                                    +{features.length - 3} más...
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {isCurrent ? (
+                              <span className="mt-3 block text-xs text-center text-primary font-600">
+                                Plan actual
+                              </span>
+                            ) : (
+                              <button className="mt-3 w-full btn-ghost py-1.5 text-xs font-600">
+                                {!userTier ? 'Suscribirse' : 'Cambiar a este plan'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

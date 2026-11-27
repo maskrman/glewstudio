@@ -17,6 +17,15 @@ import type { CourseStatus } from '@/lib/admin-courses';
 import { formatDuration } from '@/lib/admin-courses';
 import { revalidatePath } from 'next/cache';
 
+function revalidateAllCoursePaths() {
+  revalidatePath('/');
+  revalidatePath('/courses');
+  revalidatePath('/course-detail');
+  revalidatePath('/en-curso');
+  revalidatePath('/admin/courses');
+  revalidatePath('/admin');
+}
+
 // ─── Course Actions ────────────────────────────────────────────────────────────
 
 export async function createCourse(data: CourseFormData) {
@@ -64,9 +73,7 @@ export async function createCourse(data: CourseFormData) {
   }
 
   // Revalidate admin and public course paths
-  revalidatePath('/admin/courses');
-  revalidatePath('/courses');
-  revalidatePath('/course-detail');
+  revalidateAllCoursePaths();
 
   return course;
 }
@@ -139,10 +146,7 @@ export async function updateCourse(id: string, data: Partial<CourseFormData>) {
     );
   }
 
-  // Revalidate admin and public course paths
-  revalidatePath('/admin/courses');
-  revalidatePath('/courses');
-  revalidatePath('/course-detail');
+  revalidateAllCoursePaths();
 
   return course;
 }
@@ -155,6 +159,8 @@ export async function deleteCourse(id: string) {
   if (error) {
     throw new Error(`Error eliminando curso: ${error.message}`);
   }
+
+  revalidateAllCoursePaths();
 
   return { success: true };
 }
@@ -730,6 +736,9 @@ export async function createInstructor(data: InstructorFormData) {
     throw new Error(`Error creando instructor: ${error.message}`);
   }
 
+  // Revalidate landing page
+  revalidatePath('/');
+
   return instructor;
 }
 
@@ -766,6 +775,9 @@ export async function updateInstructor(id: string, data: Partial<InstructorFormD
     throw new Error(`Error actualizando instructor: ${error.message}`);
   }
 
+  // Revalidate landing page
+  revalidatePath('/');
+
   return instructor;
 }
 
@@ -790,6 +802,9 @@ export async function deleteInstructor(id: string) {
   if (error) {
     throw new Error(`Error eliminando instructor: ${error.message}`);
   }
+
+  // Revalidate landing page
+  revalidatePath('/');
 
   return { success: true };
 }

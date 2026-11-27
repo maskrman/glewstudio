@@ -14,6 +14,7 @@ import {
   PAYMENT_CONFIG,
 } from '@/lib/config';
 import { createClient } from '@/lib/supabase/client';
+import { getPublicMembershipPlans, type MembershipPlan } from '@/app/admin/actions/membership';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
 import TierBadge from '@/components/ui/TierBadge';
@@ -80,6 +81,10 @@ export default function AccountPage() {
     text: string;
   } | null>(null);
 
+  // Membership plans state (for real-time updates)
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) {
@@ -110,6 +115,39 @@ export default function AccountPage() {
       setRecentLoading(false);
     };
     load();
+
+    // Load membership plans
+    const loadPlans = async () => {
+      try {
+        const dbPlans = await getPublicMembershipPlans();
+        setMembershipPlans(dbPlans);
+      } catch (error) {
+        console.error('Error loading membership plans:', error);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+    loadPlans();
+
+    // Subscribe to Realtime changes on membership_plans table
+    const channel = supabase
+      .channel('membership-plans-changes-account')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'membership_plans',
+        },
+        () => {
+          loadPlans();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived values ──────────────────────────────────────────────────────────
@@ -323,6 +361,8 @@ export default function AccountPage() {
                 tierDiscount={tierDiscount}
                 tierFeatures={tierFeatures}
                 loading={profileLoading}
+                membershipPlans={membershipPlans}
+                plansLoading={plansLoading}
               />
             </section>
           </div>
@@ -340,6 +380,8 @@ function SubscriptionTab({
   tierDiscount,
   tierFeatures,
   loading,
+  membershipPlans,
+  plansLoading,
 }: {
   userTier: SubscriptionTier | null;
   tierLabel: string;
@@ -347,8 +389,19 @@ function SubscriptionTab({
   tierDiscount: number;
   tierFeatures: string[];
   loading: boolean;
+  membershipPlans: MembershipPlan[];
+  plansLoading: boolean;
 }) {
-  if (loading) {
+  // Find current plan in membershipPlans
+  const currentPlan = membershipPlans.find((p) => p.slug === userTier);
+  const displayLabel = currentPlan?.name || tierLabel;
+  const displayMonthly = currentPlan?.monthly_price ?? tierPrice?.monthly;
+  const displayAnnual = currentPlan?.annual_monthly_price ?? tierPrice?.annual;
+  const displayDiscount = currentPlan?.premium_discount_percent ?? tierDiscount;
+  const displayFeatures = (currentPlan?.features as string[]) || tierFeatures;
+  const isPopular = currentPlan?.is_popular ?? false;
+
+  if (loading || plansLoading) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
         <div className="glass-card rounded-2xl p-6 animate-pulse">
@@ -389,10 +442,10 @@ function SubscriptionTab({
                 <TierBadge tier={userTier} size="md" showIcon />
               </div>
             )}
-            <h2 className="text-2xl md:text-3xl font-800 text-foreground">{tierLabel}</h2>
+            <h2 className="text-2xl md:text-3xl font-800 text-foreground">{displayLabel}</h2>
             <p className="text-muted-foreground text-sm mt-1">
               {userTier
-                ? `$${tierPrice?.monthly}/mes · Membresía activa`
+                ? `$${displayMonthly}/mes · Membresía activa`
                 : 'Suscríbete para acceder a contenido exclusivo y descuentos en cursos premium'}
             </p>
           </div>
@@ -401,7 +454,7 @@ function SubscriptionTab({
               <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">
                 Descuento en cursos premium
               </p>
-              <p className="text-3xl font-800 gradient-gold-text">{tierDiscount}%</p>
+              <p className="text-3xl font-800 gradient-gold-text">{displayDiscount}%</p>
             </div>
           )}
         </div>
@@ -412,7 +465,7 @@ function SubscriptionTab({
               Beneficios incluidos
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {tierFeatures.map((feature, i) => (
+              {displayFeatures.map((feature, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -10 }}
@@ -469,7 +522,7 @@ function SubscriptionTab({
       </motion.div>
 
       {/* Upgrade Options */}
-      {!loading && userTier !== 'diafragma' && (
+      {!plansLoading && userTier !== 'diafragma' && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -477,76 +530,92 @@ function SubscriptionTab({
         >
           <h3 className="text-lg font-700 text-foreground mb-6">Actualizar Membresía</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {(['apertura', 'obturador', 'diafragma'] as const).map((tier) => (
-              <motion.div
-                key={tier}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: 0.3 + ['apertura', 'obturador', 'diafragma'].indexOf(tier) * 0.1,
-                }}
-                className={`rounded-2xl border p-6 transition-all relative overflow-hidden ${
-                  userTier === tier
-                    ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
-                    : 'border-border hover:border-primary/30 hover:bg-muted/30'
-                }`}
-              >
-                {userTier === tier && (
-                  <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-700 px-2 py-0.5 rounded-full">
-                    Plan Actual
+            {membershipPlans.map((plan) => {
+              const isCurrent = userTier === plan.slug;
+              const monthlyPrice = plan.monthly_price;
+              const annualPrice = plan.annual_monthly_price;
+              const discount = plan.premium_discount_percent;
+              const features = (plan.features as string[]) || [];
+
+              return (
+                <motion.div
+                  key={plan.slug}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.3 + membershipPlans.indexOf(plan) * 0.1,
+                  }}
+                  className={`rounded-2xl border p-6 transition-all relative overflow-hidden ${
+                    isCurrent
+                      ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+                      : 'border-border hover:border-primary/30 hover:bg-muted/30'
+                  }`}
+                >
+                  {isCurrent && (
+                    <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-700 px-2 py-0.5 rounded-full">
+                      Plan Actual
+                    </div>
+                  )}
+                  <div className="mb-3">
+                    <TierBadge
+                      tier={plan.slug as 'apertura' | 'obturador' | 'diafragma'}
+                      size="md"
+                      showIcon
+                    />
                   </div>
-                )}
-                <div className="mb-3">
-                  <TierBadge tier={tier} size="md" showIcon />
-                </div>
-                <p className="text-2xl font-800 gradient-gold-text">
-                  ${MEMBERSHIP_PRICES[tier].monthly}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  ${MEMBERSHIP_PRICES[tier].annual}/mes (anual)
-                </p>
-                <p className="text-xs text-primary font-600 mt-3 flex items-center gap-1">
-                  <Icon name="TagIcon" size={12} />
-                  {MEMBERSHIP_DISCOUNTS[tier]}% descuento en premium
-                </p>
-                <div className="mt-5 pt-4 border-t border-border">
-                  <p className="text-xs font-600 text-muted-foreground mb-3 uppercase tracking-wider">
-                    Incluye
+                  <p className="text-2xl font-800 gradient-gold-text">${monthlyPrice}/mes</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">${annualPrice}/mes (anual)</p>
+                  <p className="text-xs text-primary font-600 mt-3 flex items-center gap-1">
+                    <Icon name="TagIcon" size={12} />
+                    {discount}% descuento en premium
                   </p>
-                  <div className="space-y-2 max-h-40 overflow-hidden">
-                    {MEMBERSHIP_FEATURES[tier].slice(0, 4).map((feature, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <Icon
-                          name="CheckIcon"
-                          size={12}
-                          className="text-primary shrink-0 mt-0.5"
-                          variant="solid"
-                        />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
-                    {MEMBERSHIP_FEATURES[tier].length > 4 && (
-                      <div className="text-xs text-primary font-500 mt-1">
-                        +{MEMBERSHIP_FEATURES[tier].length - 4} más...
-                      </div>
-                    )}
+                  {plan.is_popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-700 px-2 py-0.5 rounded-full">
+                      Más Popular
+                    </div>
+                  )}
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <p className="text-xs font-600 text-muted-foreground mb-3 uppercase tracking-wider">
+                      Incluye
+                    </p>
+                    <div className="space-y-2 max-h-40 overflow-hidden">
+                      {features.slice(0, 4).map((feature, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 text-xs text-muted-foreground"
+                        >
+                          <Icon
+                            name="CheckIcon"
+                            size={12}
+                            className="text-primary shrink-0 mt-0.5"
+                            variant="solid"
+                          />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
+                      {features.length > 4 && (
+                        <div className="text-xs text-primary font-500 mt-1">
+                          +{features.length - 4} más...
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-                {userTier === tier ? (
-                  <button className="mt-5 w-full btn-ghost py-2 text-sm font-600" disabled>
-                    Plan actual
-                  </button>
-                ) : (
-                  <Link
-                    href="/account/billing"
-                    className="mt-5 w-full btn-primary py-2 text-sm font-700 flex items-center justify-center gap-2 focus-ring"
-                  >
-                    {userTier ? 'Cambiar a este plan' : 'Suscribirse'}
-                    <Icon name="ArrowRightIcon" size={14} />
-                  </Link>
-                )}
-              </motion.div>
-            ))}
+                  {isCurrent ? (
+                    <button className="mt-5 w-full btn-ghost py-2 text-sm font-600" disabled>
+                      Plan actual
+                    </button>
+                  ) : (
+                    <Link
+                      href="/account/billing"
+                      className="mt-5 w-full btn-primary py-2 text-sm font-700 flex items-center justify-center gap-2 focus-ring"
+                    >
+                      {userTier ? 'Cambiar a este plan' : 'Suscribirse'}
+                      <Icon name="ArrowRightIcon" size={14} />
+                    </Link>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}

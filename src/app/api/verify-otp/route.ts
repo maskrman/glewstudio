@@ -194,6 +194,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if user has a coupon code in metadata and redeem it
+    const couponCode = user.user_metadata?.coupon_code;
+    if (couponCode) {
+      try {
+        // Increment coupon usage using service role (bypasses RLS)
+        const { error: rpcError } = await supabaseAdmin.rpc('increment_coupon_usage', {
+          p_code: couponCode.toUpperCase(),
+        });
+
+        if (rpcError) {
+          // Log but don't fail the verification - coupon redemption is secondary
+          console.error('[verify-otp] Error redeeming coupon:', rpcError.message);
+        } else {
+          console.log(`[verify-otp] Coupon "${couponCode}" redeemed for user ${user.id}`);
+        }
+      } catch (couponErr) {
+        console.error('[verify-otp] Unexpected error redeeming coupon:', couponErr);
+      }
+    }
+
     return NextResponse.json(
       { success: true, verified: true, userId: user.id },
       { headers: corsHeaders }

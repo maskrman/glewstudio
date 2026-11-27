@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import AppImage from '@/components/ui/AppImage';
 import AppLogo from '@/components/ui/AppLogo';
@@ -11,6 +11,8 @@ import TierBadge from '@/components/ui/TierBadge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { MEMBERSHIP_PRICES } from '@/lib/config';
+import { getPublicMembershipPlans, type MembershipPlan } from '@/app/admin/actions/membership';
+import { createClient } from '@/lib/supabase/client';
 
 type AuthTab = 'login' | 'signup';
 
@@ -27,44 +29,232 @@ interface SignupForm {
   plan: string;
 }
 
-// Plans derived from centralized config — do NOT hardcode prices here
-const plans = [
-  {
-    id: 'apertura',
-    name: 'Apertura',
-    price: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`,
-    tier: 'apertura' as const,
-  },
-  {
-    id: 'obturador',
-    name: 'Obturador',
-    price: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`,
-    tier: 'obturador' as const,
-    recommended: true,
-  },
-  {
-    id: 'diafragma',
-    name: 'Diafragma',
-    price: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`,
-    tier: 'diafragma' as const,
-  },
-];
+interface Plan {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: string;
+  tier: 'apertura' | 'obturador' | 'diafragma';
+  recommended?: boolean;
+}
 
 export default function AuthScreen() {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
   const [tab, setTab] = useState<AuthTab>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Coupon state
+  const [showCouponInput, setShowCouponInput] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount_percent: number;
+  } | null>(null);
   const router = useRouter();
-  const { signIn, signUp } = useAuth();
+  const searchParams = useSearchParams();
+  const { signIn, signUp, validateCoupon } = useAuth();
 
   const loginForm = useForm<LoginForm>({
     defaultValues: { email: '', password: '', remember: false },
   });
   const signupForm = useForm<SignupForm>({
-    defaultValues: { name: '', email: '', password: '', plan: 'obturador' },
+    defaultValues: { name: '', email: '', password: '', plan: 'free' },
   });
   const watchedPlan = signupForm.watch('plan');
+
+  // Reset coupon when plan changes to 'free'
+  useEffect(() => {
+    if (watchedPlan === 'free') {
+      setShowCouponInput(false);
+      setCouponCode('');
+      setAppliedCoupon(null);
+      setCouponError('');
+    }
+  }, [watchedPlan]);
+
+  // Handle coupon validation
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) {
+      setCouponError('Ingresa un código de cupón');
+      return;
+    }
+    setCouponValidating(true);
+    setCouponError('');
+    try {
+      const result = await validateCoupon(code);
+      if (result.valid) {
+        setAppliedCoupon({ code, discount_percent: result.discount_percent });
+        setShowCouponInput(false);
+        setCouponCode('');
+        toast.success(`Cupón "${code}" aplicado: ${result.discount_percent}% de descuento`);
+      } else {
+        setCouponError(result.message || 'Cupón no válido');
+        setAppliedCoupon(null);
+      }
+    } catch (err) {
+      console.error('[AuthScreen] Error applying coupon:', err);
+      setCouponError('Error al validar el cupón');
+      setAppliedCoupon(null);
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  // Handle removing applied coupon
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setShowCouponInput(true);
+    setCouponError('');
+  };
+
+  // Load membership plans from database
+  useEffect(() => {
+    let mounted = true;
+    const supabase = createClient();
+
+    async function loadPlans() {
+      try {
+        const dbPlans = await getPublicMembershipPlans();
+
+        if (!mounted) return;
+
+        if (dbPlans && dbPlans.length > 0) {
+          const transformedPlans: Plan[] = [
+            {
+              id: 'free',
+              name: 'Gratis',
+              subtitle: 'Explorador',
+              price: 'Gratis',
+              tier: 'apertura' as const,
+            },
+            ...dbPlans.map((dbPlan: MembershipPlan) => ({
+              id: dbPlan.slug,
+              name: dbPlan.name,
+              subtitle: dbPlan.badge || 'Membresía',
+              price: `$${dbPlan.monthly_price}/mes`,
+              tier: dbPlan.slug as 'apertura' | 'obturador' | 'diafragma',
+              recommended: dbPlan.is_popular,
+            })),
+          ];
+          setPlans(transformedPlans);
+        } else {
+          // Fallback to config values
+          const fallbackPlans: Plan[] = [
+            {
+              id: 'free',
+              name: 'Gratis',
+              subtitle: 'Explorador',
+              price: 'Gratis',
+              tier: 'apertura' as const,
+            },
+            {
+              id: 'apertura',
+              name: 'Apertura',
+              subtitle: 'Membresía Básica',
+              price: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`,
+              tier: 'apertura' as const,
+            },
+            {
+              id: 'obturador',
+              name: 'Obturador',
+              subtitle: 'Membresía Pro',
+              price: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`,
+              tier: 'obturador' as const,
+              recommended: true,
+            },
+            {
+              id: 'diafragma',
+              name: 'Diafragma',
+              subtitle: 'Membresía Master',
+              price: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`,
+              tier: 'diafragma' as const,
+            },
+          ];
+          setPlans(fallbackPlans);
+        }
+      } catch (error) {
+        console.error('Error loading membership plans:', error);
+        // Fallback to config values on error
+        const fallbackPlans: Plan[] = [
+          {
+            id: 'free',
+            name: 'Gratis',
+            subtitle: 'Explorador',
+            price: 'Gratis',
+            tier: 'apertura' as const,
+          },
+          {
+            id: 'apertura',
+            name: 'Apertura',
+            subtitle: 'Membresía Básica',
+            price: `$${MEMBERSHIP_PRICES.apertura.monthly}/mes`,
+            tier: 'apertura' as const,
+          },
+          {
+            id: 'obturador',
+            name: 'Obturador',
+            subtitle: 'Membresía Pro',
+            price: `$${MEMBERSHIP_PRICES.obturador.monthly}/mes`,
+            tier: 'obturador' as const,
+            recommended: true,
+          },
+          {
+            id: 'diafragma',
+            name: 'Diafragma',
+            subtitle: 'Membresía Master',
+            price: `$${MEMBERSHIP_PRICES.diafragma.monthly}/mes`,
+            tier: 'diafragma' as const,
+          },
+        ];
+        setPlans(fallbackPlans);
+      } finally {
+        if (mounted) {
+          setLoadingPlans(false);
+        }
+      }
+    }
+
+    loadPlans();
+
+    // Subscribe to Realtime changes on membership_plans table
+    const channel = supabase
+      .channel('membership-plans-changes-auth')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'membership_plans',
+        },
+        () => {
+          if (mounted) {
+            loadPlans();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Set default plan from URL parameter
+  useEffect(() => {
+    const urlPlan = searchParams.get('plan');
+    if (urlPlan) {
+      const validPlans = ['free', 'apertura', 'obturador', 'diafragma'];
+      if (validPlans.includes(urlPlan)) {
+        signupForm.setValue('plan', urlPlan, { shouldValidate: true });
+      }
+    }
+  }, [searchParams, signupForm]);
 
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
@@ -91,7 +281,11 @@ export default function AuthScreen() {
   const handleSignup = async (data: SignupForm) => {
     setLoading(true);
     try {
-      await signUp(data.email, data.password, { fullName: data.name, plan: data.plan });
+      await signUp(data.email, data.password, {
+        fullName: data.name,
+        plan: data.plan,
+        couponCode: appliedCoupon?.code,
+      });
       toast.success('¡Cuenta creada! Bienvenido a Glewstudio.');
       router.push('/dashboard');
       router.refresh();
@@ -395,39 +589,134 @@ export default function AuthScreen() {
               </div>
 
               {/* Plan selection */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-600 text-foreground">Elige tu plan</label>
+              {loadingPlans ? (
                 <div className="flex flex-col gap-2">
-                  {plans.map((plan) => (
-                    <label
-                      key={`signup-plan-${plan.id}`}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                        watchedPlan === plan.id
-                          ? 'border-primary/50 bg-primary/5'
-                          : 'border-border hover:border-border/80'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        value={plan.id}
-                        className="accent-primary"
-                        {...signupForm.register('plan')}
-                      />
-
-                      <div className="flex items-center gap-2 flex-1">
-                        <TierBadge tier={plan.tier} size="sm" />
-                        <span className="text-sm font-600 text-foreground">{plan.name}</span>
-                        {'recommended' in plan && plan.recommended && (
-                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
-                            Popular
-                          </span>
-                        )}
+                  <label className="text-sm font-600 text-foreground">Elige tu plan</label>
+                  <div className="flex flex-col gap-2">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="animate-pulse flex items-center gap-3 p-3 rounded-xl border border-border"
+                      >
+                        <div className="w-4 h-4 rounded-full bg-muted" />
+                        <div className="flex-1">
+                          <div className="h-4 w-3/4 bg-muted rounded" />
+                          <div className="h-3 w-1/2 bg-muted rounded mt-1" />
+                        </div>
+                        <div className="w-20 h-6 bg-muted rounded" />
                       </div>
-                      <span className="text-sm font-700 text-primary">{plan.price}</span>
-                    </label>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-600 text-foreground">Elige tu plan</label>
+                  <div className="flex flex-col gap-2">
+                    {plans.map((plan) => (
+                      <label
+                        key={`signup-plan-${plan.id}`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          watchedPlan === plan.id
+                            ? 'border-primary/50 bg-primary/5'
+                            : 'border-border hover:border-border/80'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          value={plan.id}
+                          className="accent-primary"
+                          {...signupForm.register('plan')}
+                        />
+
+                        <div className="flex items-center gap-2 flex-1">
+                          <TierBadge tier={plan.tier} size="sm" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-600 text-foreground">{plan.name}</span>
+                            {'subtitle' in plan && plan.subtitle && (
+                              <span className="text-xs text-muted-foreground">{plan.subtitle}</span>
+                            )}
+                          </div>
+                          {'recommended' in plan && plan.recommended && (
+                            <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-700">
+                              Popular
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-700 text-primary">{plan.price}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Coupon section - only show for paid plans */}
+              {watchedPlan !== 'free' && !loadingPlans && (
+                <div className="flex flex-col gap-2">
+                  {!appliedCoupon && !showCouponInput && (
+                    <label className="flex items-center gap-2 cursor-pointer p-3 rounded-xl border border-border hover:border-primary/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-primary"
+                        onChange={() => setShowCouponInput(true)}
+                      />
+                      <span className="text-sm font-500 text-foreground">
+                        Aplicar cupón de descuento
+                      </span>
+                    </label>
+                  )}
+
+                  {showCouponInput && !appliedCoupon && (
+                    <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-muted/30">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="Ej. APERTURA20"
+                          className="input-dark flex-1 px-4 py-2.5 text-sm uppercase"
+                          disabled={couponValidating}
+                          onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={couponValidating || !couponCode.trim()}
+                          className="btn-primary px-4 py-2.5 text-sm font-600 whitespace-nowrap disabled:opacity-60"
+                        >
+                          {couponValidating ? 'Validando...' : 'Aplicar'}
+                        </button>
+                      </div>
+                      {couponError && <p className="text-xs text-red-400">{couponError}</p>}
+                    </div>
+                  )}
+
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-3">
+                        <Icon name="TicketPercentIcon" size={18} className="text-green-400" />
+                        <div>
+                          <p className="text-sm font-600 text-foreground">
+                            Cupón{' '}
+                            <span className="font-mono text-primary">{appliedCoupon.code}</span>{' '}
+                            aplicado
+                          </p>
+                          <p className="text-xs text-green-400 font-500">
+                            {appliedCoupon.discount_percent}% de descuento
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-xs text-red-400 hover:text-red-300 font-500 flex items-center gap-1"
+                      >
+                        <Icon name="XIcon" size={12} />
+                        Quitar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <button
                 type="submit"

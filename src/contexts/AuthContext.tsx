@@ -11,7 +11,7 @@ interface AuthContextValue {
   signUp: (
     email: string,
     password: string,
-    metadata?: { fullName?: string; avatarUrl?: string; plan?: string }
+    metadata?: { fullName?: string; avatarUrl?: string; plan?: string; couponCode?: string }
   ) => Promise<{ user: User | null; session: Session | null }>;
   signIn: (
     email: string,
@@ -21,6 +21,9 @@ interface AuthContextValue {
   getCurrentUser: () => Promise<User | null>;
   isEmailVerified: () => boolean;
   getUserProfile: () => Promise<Record<string, unknown> | null>;
+  validateCoupon: (
+    code: string
+  ) => Promise<{ valid: boolean; discount_percent: number; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (
     email: string,
     password: string,
-    metadata: { fullName?: string; avatarUrl?: string; plan?: string } = {}
+    metadata: { fullName?: string; avatarUrl?: string; plan?: string; couponCode?: string } = {}
   ) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -81,6 +84,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         data: {
           full_name: metadata?.fullName || '',
           avatar_url: metadata?.avatarUrl || '',
+          // Pass coupon code in metadata for server-side processing
+          coupon_code: metadata?.couponCode || '',
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -92,6 +97,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // No client-side subscription insert here.
 
     return { user: data.user, session: data.session };
+  };
+
+  // Validate coupon using Supabase RPC
+  const validateCoupon = async (
+    code: string
+  ): Promise<{ valid: boolean; discount_percent: number; message: string }> => {
+    const { data, error } = await supabase.rpc('validate_coupon', { p_code: code.toUpperCase() });
+
+    if (error) {
+      console.error('[AuthContext] Error validating coupon:', error);
+      return { valid: false, discount_percent: 0, message: 'Error validando cupón' };
+    }
+
+    // RPC returns an array of rows
+    if (data && data.length > 0) {
+      return data[0] as { valid: boolean; discount_percent: number; message: string };
+    }
+
+    return { valid: false, discount_percent: 0, message: 'Cupón no válido' };
   };
 
   // Email/Password Sign In
@@ -145,6 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     getCurrentUser,
     isEmailVerified,
     getUserProfile,
+    validateCoupon,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

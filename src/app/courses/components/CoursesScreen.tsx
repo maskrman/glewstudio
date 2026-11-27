@@ -406,6 +406,27 @@ export default function CoursesScreen({ initialCourses, initialCategories }: Cou
 
   useEffect(() => {
     loadData();
+
+    // Subscribe to Realtime changes on courses table
+    const supabase = createClient();
+    const channel = supabase
+      .channel('courses-changes-courses-screen')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'courses',
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadData]);
 
   useEffect(() => {

@@ -1,80 +1,69 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import AppImage from '@/components/ui/AppImage';
 import Icon from '@/components/ui/AppIcon';
-import { toast } from 'sonner';
 
-const FEATURED_COURSE = {
-  title: 'Iluminación Cinematográfica: Del Concepto al Resultado',
-  instructor: 'Carlos Mendoza',
-  image: '',
-  imageAlt: 'Sesión de fotografía de estudio con iluminación cinematográfica y equipo profesional',
-  description:
-    'Aprende a diseñar esquemas de iluminación para retratos, moda y fotografía comercial.',
-};
+const btnPrimaryGold =
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-8 py-3 text-sm font-700 text-black shadow-lg shadow-amber-500/30 transition-all hover:from-amber-400 hover:to-amber-500 hover:shadow-amber-400/40 focus-ring';
+const btnSecondaryTranslucent =
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-8 py-3 text-sm font-700 text-white backdrop-blur-md transition-colors hover:border-white/30 hover:bg-white/10 focus-ring';
 
-const glassAction =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-white/10 bg-black/45 px-5 py-3 text-sm font-700 text-white backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/65 focus-ring';
+const badgeStyle =
+  'inline-flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-500/10 px-4 py-1.5 text-xs font-700 text-amber-400 uppercase tracking-wider';
 
 export default function LandingHero() {
-  const [inMyList, setInMyList] = useState(false);
-
-  const toggleMyList = () => {
-    const nextInMyList = !inMyList;
-    setInMyList(nextInMyList);
-    toast.success(nextInMyList ? 'Guardado en Mi Lista para esta sesión' : 'Eliminado de Mi Lista');
-  };
-
   return (
-    <section className="relative isolate flex min-h-[78svh] items-end overflow-hidden bg-background pt-24 md:min-h-[88svh]">
+    <section className="relative isolate flex min-h-[78svh] items-center justify-start overflow-hidden bg-background pt-24 md:min-h-[88svh]">
       <div className="absolute inset-0 z-0">
         <AppImage
-          src={FEATURED_COURSE.image}
-          alt={FEATURED_COURSE.imageAlt}
+          src="/assets/images/studio-hero.jpg"
+          alt="Glewstudio - Estudio de fotografía profesional"
           fill
           priority
           className="object-cover object-[62%_40%]"
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/75 to-background/10" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_68%_42%,transparent_0%,rgba(10,10,15,0.18)_38%,rgba(10,10,15,0.74)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-[58%] bg-gradient-to-t from-background via-background/80 to-transparent" />
+        {/* Deep dark gradient from left and bottom for maximum text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_50%,rgba(0,0,0,0)_0%,rgba(10,10,15,0.6)_70%)]" />
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-6 pb-24 pt-24 lg:px-8 xl:px-10 2xl:px-16 md:pb-32">
-        <div className="max-w-2xl">
-          <h1 className="mb-5 max-w-3xl text-4xl font-800 leading-tight text-foreground md:text-5xl xl:text-6xl">
-            {FEATURED_COURSE.title}
+        <div className="max-w-2xl text-left">
+          {/* Golden badge: ACADEMIA DE FOTOGRAFÍA E ILUMINACIÓN */}
+          <div className={badgeStyle}>ACADEMIA DE FOTOGRAFÍA E ILUMINACIÓN</div>
+
+          {/* Main H1 */}
+          <h1 className="mt-6 mb-6 max-w-3xl text-4xl font-800 leading-tight text-white md:text-5xl lg:text-6xl xl:text-7xl">
+            Domina la luz, la cámara y la producción fotográfica profesional.
           </h1>
-          <p className="mb-3 text-sm font-600 text-foreground/90">
-            Con {FEATURED_COURSE.instructor}
-          </p>
-          <p className="mb-8 max-w-xl text-base leading-relaxed text-foreground/75 md:text-lg">
-            {FEATURED_COURSE.description}
+
+          {/* Description/Subtitle */}
+          <p className="mb-8 max-w-xl text-base leading-relaxed text-foreground/80 md:text-lg">
+            Aprende fotografía de estudio, retrato, producto y edición cinematográfica con cursos
+            prácticos creados por profesionales. Empieza gratis o adquiere cursos completos con
+            acceso inmediato.
           </p>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/video-player" className={glassAction}>
-              <Icon name="PlayIcon" size={18} className="text-primary" />
-              Reproducir
+          {/* CTA Buttons */}
+          <div className="mb-8 flex flex-wrap items-center gap-3">
+            <Link href="/courses" className={btnPrimaryGold}>
+              <Icon name="PlayIcon" size={18} />
+              Explorar Cursos
             </Link>
-            <Link href="/course-detail" className={glassAction}>
-              <Icon name="InformationCircleIcon" size={18} />
-              Más información
+            <Link href="/sign-up-login?plan=free" className={btnSecondaryTranslucent}>
+              <Icon name="UserPlusIcon" size={18} />
+              Comenzar Gratis
             </Link>
-            <button
-              type="button"
-              onClick={toggleMyList}
-              aria-pressed={inMyList}
-              aria-label={inMyList ? 'Quitar de Mi Lista' : 'Añadir a Mi Lista'}
-              className={glassAction}
-            >
-              <Icon name={inMyList ? 'CheckIcon' : 'PlusIcon'} size={18} />
-              Mi Lista
-            </button>
           </div>
+
+          {/* Value proposition */}
+          <p className="text-sm text-foreground/50 tracking-wide">
+            Clases gratuitas disponibles · Cursos on-demand · Acceso desde cualquier dispositivo
+          </p>
         </div>
       </div>
     </section>

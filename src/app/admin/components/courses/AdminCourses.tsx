@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   extractVimeoId,
@@ -729,12 +730,21 @@ export default function AdminCourses({ initialCourses = [] }: AdminCoursesProps)
   // Instructors
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [activeTab, setActiveTab] = useState<'courses' | 'instructors'>('courses');
+  const searchParams = useSearchParams();
 
   // Load categories on mount
   useEffect(() => {
     loadCategories();
     loadInstructors();
   }, []);
+
+  // Read initial tab from URL parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'instructors' || tab === 'courses') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const loadCategories = async () => {
     try {

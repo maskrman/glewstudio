@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 
@@ -12,6 +13,7 @@ const navigation = [
 ];
 
 export default function LandingTopbar() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -21,6 +23,15 @@ export default function LandingTopbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // If we're on the landing page, scroll to top instead of navigating
+    if (pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    // Otherwise let the Link navigate normally to '/'
+  };
+
   return (
     <>
       <header
@@ -29,7 +40,11 @@ export default function LandingTopbar() {
         }`}
       >
         <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link
+            href="/"
+            onClick={handleLogoClick}
+            className="flex items-center gap-2.5 cursor-pointer"
+          >
             <AppLogo size={32} />
             <span className="font-extrabold text-lg tracking-tight text-foreground hidden sm:block">
               Glewstudio
@@ -55,7 +70,7 @@ export default function LandingTopbar() {
             >
               Iniciar Sesión
             </Link>
-            <Link href="/sign-up-login" className="btn-primary px-4 py-1.5 text-sm">
+            <Link href="/sign-up-login?plan=free" className="btn-primary px-4 py-1.5 text-sm">
               Comenzar Gratis
             </Link>
             <button
@@ -73,10 +88,14 @@ export default function LandingTopbar() {
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} />
           <div className="relative ml-auto w-72 h-full bg-card flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="flex items-center gap-2"
+                onClick={() => setMobileOpen(false)}
+              >
                 <AppLogo size={28} />
                 <span className="font-extrabold text-base">Glewstudio</span>
-              </div>
+              </Link>
               <button onClick={() => setMobileOpen(false)}>
                 <Icon name="XMarkIcon" size={22} className="text-muted-foreground" />
               </button>
@@ -95,7 +114,7 @@ export default function LandingTopbar() {
             </nav>
             <div className="mt-auto p-4 border-t border-border flex flex-col gap-3">
               <Link
-                href="/sign-up-login"
+                href="/sign-up-login?plan=free"
                 className="btn-primary py-2.5 text-sm text-center"
                 onClick={() => setMobileOpen(false)}
               >

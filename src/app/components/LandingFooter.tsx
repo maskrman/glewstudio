@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
@@ -15,10 +16,10 @@ export default function LandingFooter() {
       <div className="max-w-screen-2xl mx-auto px-6 lg:px-8 xl:px-10 2xl:px-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <Link href="/" className="flex items-center gap-2 mb-4 focus-ring">
               <AppLogo size={32} />
               <span className="font-extrabold text-lg text-foreground">Glewstudio</span>
-            </div>
+            </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               La plataforma de fotografía profesional para estudiantes que quieren resultados
               reales.
